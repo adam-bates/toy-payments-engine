@@ -3,6 +3,8 @@ name = "toy-payments-engine"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "tpe" # tpe: toy payments engine
+path = "src/tpe/lib.rs"
 
 [dependencies]

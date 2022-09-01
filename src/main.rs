@@ -1,3 +1,4 @@
 fn main() {
-    println!("Hello, world!");
+    tpe::print_hello("Adam");
 }
+
