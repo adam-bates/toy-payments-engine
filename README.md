@@ -1,11 +1,11 @@
-# Toy Payments Engine
+# Toy Payments Engine 🧸💸🚒
 ##### Because even payment engines can be fun if they're written in Rust!
 
 **Toy Payments Engine**, or **TPE** as I call it, is a pretend payments processing engine that tracks deposits and withdrawals for multiple clients, as well as disputes, resolutions, and charge-backs for transactions.
 
 ###### Disclaimer: Please don't use this in production :)
 
-## Usage
+## Usage 🚴
 The easiest way to see it in action is using one of the test-example files:
 ```
 cargo run -- ./resources/test-examples/inputs/transactions_1.csv
@@ -20,7 +20,7 @@ client,available,held,total,locked
 1,1.0000,0.0000,1.0000,false
 ```
 
-### Writing to a file
+### Writing to a file ✍️
 
 The logs are written to `stderr`, so we can direct our output into a file like so:
 ```
@@ -34,7 +34,7 @@ client,available,held,total,locked
 1,1.0000,0.0000,1.0000,false
 ```
 
-### Testing
+### Testing 🧪
 Running the test suite is as simple as:
 ```
 cargo test
@@ -58,7 +58,7 @@ _TL;DR:_
 
 _Full explanation:_
 
-### Part 1: Input
+### Part 1: Input 🔠
 The program expects to read a CSV file with the following structure.
 
 **CSV Headers:**
@@ -89,7 +89,7 @@ type,       client,    tx,    amount
 deposit,         1,     1,       1.0
 ```
 
-## Part 2: Process
+## Part 2: Process ⚙️
 
 #### Main
 
@@ -138,7 +138,7 @@ The `AccountService` is responsible for 3 things:
 
 - Link to `AccountService`: [src/tpe/services/account_service.rs:32](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/services/account_service.rs#L32)
 
-## Part 3: Report
+## Part 3: Report 📈
 
 After all processing is completed, we ask the `AccountService` to loop through every `Account`, and build a report using the latest state-snapshots.
 
@@ -146,6 +146,6 @@ This is quite simple really.
 - Building the report can be found in the Account Service: [src/tpe/services/account_service.rs:43-72](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/services/account_service.rs#L43-L72)
 - Serializing the report can be found in main: [src/main.rs70-88](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L70-L88)
 
-# And, well ... that's it!
+# And, well ... that's it! 😁
 
 Thanks for stopping by :) And feel free to reach out if you have any questions or concerns!
