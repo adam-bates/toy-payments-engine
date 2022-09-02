@@ -1,7 +1,6 @@
 use crate::ids::ClientId;
 use crate::models::{
-    Account, ChargedBackTransaction, DisputedTransaction, TransactionType,
-    ValidTransaction,
+    Account, ChargedBackTransaction, DisputedTransaction, TransactionType, ValidTransaction,
 };
 use crate::AccountReport;
 use crate::Result;
@@ -38,9 +37,19 @@ impl AccountService {
     pub fn build_report(&self) -> Result<Vec<AccountReport>> {
         let mut report = vec![];
 
+        log::debug!("Building report...");
+
         for account in self.repository.values() {
+            log::debug!("Building report for account: {account:?}");
+
             let mut total = account.snapshot.available.clone();
             total.add(&account.snapshot.held)?;
+            log::debug!(
+                "Calculated total as {} + {} = {}",
+                account.snapshot.available,
+                account.snapshot.held,
+                total
+            );
 
             report.push(AccountReport {
                 client: account.client_id.to_string(),
@@ -50,6 +59,8 @@ impl AccountService {
                 locked: account.snapshot.locked,
             });
         }
+
+        log::debug!("Succssfully built report!");
 
         return Ok(report);
     }

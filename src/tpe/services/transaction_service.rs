@@ -32,6 +32,8 @@ impl TransactionService {
     }
 
     pub fn process_event(&mut self, event: TransactionEvent) -> Result {
+        log::debug!("Processing transaction event: {event:?}");
+
         match event {
             TransactionEvent::Deposit(event) => self.process_deposit_event(event)?,
 
@@ -48,12 +50,15 @@ impl TransactionService {
     }
 
     pub fn take(self) -> AccountService {
+        log::debug!("Destructuring TransactionService");
         return self.account_service;
     }
 
     fn process_deposit_event(&mut self, event: DepositEvent) -> Result {
         let transaction =
             new_transaction(event.transaction_id, TransactionType::Deposit, event.amount);
+
+        log::debug!("Successfully created new transaction: {transaction:?}");
 
         self.account_service
             .process_valid_transaction(event.client_id, &transaction)?;
@@ -67,6 +72,8 @@ impl TransactionService {
             TransactionType::Withdrawal,
             event.amount,
         );
+
+        log::debug!("Successfully created new transaction: {transaction:?}");
 
         self.account_service
             .process_valid_transaction(event.client_id, &transaction)?;
@@ -85,6 +92,8 @@ impl TransactionService {
                 ))
             })?;
 
+        log::debug!("Found account: {account:?}");
+
         let transaction = account
             .transactions
             .replace(event.transaction_id, |transaction| match transaction {
@@ -98,10 +107,13 @@ impl TransactionService {
             })?
             .ok_or_else(|| {
                 TransactionServiceError::InvalidEvent(format!(
-                    "Dispute event contains an invalid transaction_id: {}",
-                    event.transaction_id
+                    "Dispute event contains an invalid transaction_id: {} for client {}",
+                    event.transaction_id,
+                    event.client_id,
                 ))
             })?;
+
+        log::debug!("Updated transaction: {transaction:?}");
 
         let transaction: DisputedTransaction =
             if let Transaction::Disputed(transaction) = transaction {
@@ -129,6 +141,8 @@ impl TransactionService {
                 ))
             })?;
 
+        log::debug!("Found account: {account:?}");
+
         let transaction = account
             .transactions
             .replace(event.transaction_id, |transaction| match transaction {
@@ -146,6 +160,8 @@ impl TransactionService {
                     event.transaction_id
                 ))
             })?;
+
+        log::debug!("Updated transaction: {transaction:?}");
 
         let transaction: ValidTransaction = if let Transaction::Valid(transaction) = transaction {
             transaction.clone()
@@ -172,6 +188,8 @@ impl TransactionService {
                 ))
             })?;
 
+        log::debug!("Found account: {account:?}");
+
         let transaction = account
             .transactions
             .replace(event.transaction_id, |transaction| match transaction {
@@ -189,6 +207,8 @@ impl TransactionService {
                     event.transaction_id
                 ))
             })?;
+
+        log::debug!("Updated transaction: {transaction:?}");
 
         let transaction: ChargedBackTransaction =
             if let Transaction::ChargedBack(transaction) = transaction {
