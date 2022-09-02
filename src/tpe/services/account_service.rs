@@ -28,15 +28,16 @@ pub enum AccountServiceError {
 /// - Gateway to datastore for accounts (currently just storing in memory hashmap)
 /// - Pocessing changes to an account, by updating snapshots
 /// - Building reports of current state using account snapshots
+#[derive(Default)]
 pub struct AccountService {
     repository: AccountDataStore,
 }
 
 impl AccountService {
     pub fn new() -> Self {
-        return Self {
+        Self {
             repository: AccountDataStore::new(),
-        };
+        }
     }
 
     pub fn build_report(&self) -> Result<Vec<AccountReport>> {
@@ -47,7 +48,7 @@ impl AccountService {
         for account in self.repository.values() {
             log::debug!("Building report for account: {account:?}");
 
-            let mut total = account.snapshot.available.clone();
+            let mut total = account.snapshot.available;
             total.add(&account.snapshot.held)?;
             log::debug!(
                 "Calculated total as {} + {} = {}",
@@ -67,7 +68,7 @@ impl AccountService {
 
         log::debug!("Succssfully built report!");
 
-        return Ok(report);
+        Ok(report)
     }
 
     pub fn process_valid_transaction(
@@ -100,7 +101,7 @@ impl AccountService {
 
         account.transactions.push(Transaction::Valid(transaction));
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn process_dispute_transaction(
@@ -110,7 +111,7 @@ impl AccountService {
     ) -> Result {
         let account = self
             .find_mut(client_id)
-            .ok_or_else(|| AccountServiceError::AccountNotFound(*client_id))?;
+            .ok_or(AccountServiceError::AccountNotFound(*client_id))?;
 
         if account.snapshot.locked {
             Err(AccountServiceError::AccountLocked(*client_id))?
@@ -126,7 +127,7 @@ impl AccountService {
             }
         }
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn process_resolve_transaction(
@@ -136,7 +137,7 @@ impl AccountService {
     ) -> Result {
         let account = self
             .find_mut(client_id)
-            .ok_or_else(|| AccountServiceError::AccountNotFound(*client_id))?;
+            .ok_or(AccountServiceError::AccountNotFound(*client_id))?;
 
         if account.snapshot.locked {
             Err(AccountServiceError::AccountLocked(*client_id))?
@@ -152,7 +153,7 @@ impl AccountService {
             }
         }
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn process_charge_back_transaction(
@@ -162,7 +163,7 @@ impl AccountService {
     ) -> Result {
         let account = self
             .find_mut(client_id)
-            .ok_or_else(|| AccountServiceError::AccountNotFound(*client_id))?;
+            .ok_or(AccountServiceError::AccountNotFound(*client_id))?;
 
         if account.snapshot.locked {
             Err(AccountServiceError::AccountLocked(*client_id))?
@@ -180,11 +181,11 @@ impl AccountService {
 
         account.snapshot.locked = true;
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn find_mut(&mut self, client_id: &ClientId) -> Option<&mut Account> {
-        return self.repository.get_mut(&client_id);
+        self.repository.get_mut(client_id)
     }
 
     fn find_or_create(&mut self, client_id: ClientId) -> &mut Account {
@@ -223,10 +224,10 @@ mod tests {
             new_transaction(OTHER_TRANSACTION_ID, TransactionType::Deposit, OTHER_AMOUNT);
 
         let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone());
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         let res = account_service.process_valid_transaction(OTHER_CLIENT_ID, transaction2.clone());
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         assert_eq!(account_service.repository.len(), 2);
 
@@ -289,7 +290,7 @@ mod tests {
             new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
 
         let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone());
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         assert_eq!(account_service.repository.len(), 1);
         assert_eq!(
@@ -327,7 +328,7 @@ mod tests {
         let transaction = transaction.dispute();
 
         let res = account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         assert_eq!(account_service.repository.len(), 1);
         assert_eq!(
@@ -351,7 +352,7 @@ mod tests {
 
         let transaction1 =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1).unwrap();
 
         let transaction2 =
             new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
@@ -360,7 +361,7 @@ mod tests {
         let transaction2 = transaction2.dispute();
 
         let res = account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction2);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         assert_eq!(account_service.repository.len(), 1);
         assert_eq!(
@@ -392,7 +393,7 @@ mod tests {
         let transaction = transaction.resolve();
 
         let res = account_service.process_resolve_transaction(&SOME_CLIENT_ID, &transaction);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         assert_eq!(account_service.repository.len(), 1);
         assert_eq!(
@@ -416,7 +417,7 @@ mod tests {
 
         let transaction1 =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1).unwrap();
 
         let transaction2 =
             new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
@@ -428,7 +429,7 @@ mod tests {
         let transaction2 = transaction2.resolve();
 
         let res = account_service.process_resolve_transaction(&SOME_CLIENT_ID, &transaction2);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         assert_eq!(account_service.repository.len(), 1);
         assert_eq!(
@@ -460,7 +461,7 @@ mod tests {
         let transaction = transaction.charge_back();
 
         let res = account_service.process_charge_back_transaction(&SOME_CLIENT_ID, &transaction);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         assert_eq!(account_service.repository.len(), 1);
         assert_eq!(
@@ -484,7 +485,7 @@ mod tests {
 
         let transaction1 =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1).unwrap();
 
         let transaction2 =
             new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
@@ -496,7 +497,7 @@ mod tests {
         let transaction2 = transaction2.charge_back();
 
         let res = account_service.process_charge_back_transaction(&SOME_CLIENT_ID, &transaction2);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         assert_eq!(account_service.repository.len(), 1);
         assert_eq!(
@@ -522,14 +523,14 @@ mod tests {
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
         account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
 
-        let mut invalid_amount = SOME_AMOUNT.clone();
+        let mut invalid_amount = SOME_AMOUNT;
         invalid_amount.add(&OTHER_AMOUNT).unwrap();
 
         let transaction2 =
             new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, invalid_amount);
 
-        let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone());
-        assert_eq!(res.is_ok(), false);
+        let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
 
@@ -577,7 +578,7 @@ mod tests {
         let transaction = transaction.dispute();
 
         let res = account_service.process_dispute_transaction(&OTHER_CLIENT_ID, &transaction);
-        assert_eq!(res.is_ok(), false);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
 
@@ -592,7 +593,7 @@ mod tests {
         let resolved = transaction.clone().resolve();
 
         let res = account_service.process_resolve_transaction(&OTHER_CLIENT_ID, &resolved);
-        assert_eq!(res.is_ok(), false);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
 
@@ -607,7 +608,7 @@ mod tests {
         let charged_back = transaction.clone().charge_back();
 
         let res = account_service.process_charge_back_transaction(&OTHER_CLIENT_ID, &charged_back);
-        assert_eq!(res.is_ok(), false);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
 
@@ -652,7 +653,7 @@ mod tests {
         let transaction2 = new_transaction(OTHER_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
 
         let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone());
-        assert_eq!(res.is_ok(), false);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
 
@@ -667,7 +668,7 @@ mod tests {
         let transaction2 = transaction2.dispute();
 
         let res = account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction2);
-        assert_eq!(res.is_ok(), false);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
 
@@ -683,7 +684,7 @@ mod tests {
         let resolved = transaction2.clone().resolve();
 
         let res = account_service.process_resolve_transaction(&SOME_CLIENT_ID, &resolved);
-        assert_eq!(res.is_ok(), false);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
 
@@ -698,7 +699,7 @@ mod tests {
         let charged_back = transaction2.clone().charge_back();
 
         let res = account_service.process_charge_back_transaction(&SOME_CLIENT_ID, &charged_back);
-        assert_eq!(res.is_ok(), false);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
 

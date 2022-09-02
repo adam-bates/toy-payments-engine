@@ -42,7 +42,7 @@ impl InputEvent {
     pub fn parse(self) -> Result<TransactionEvent> {
         let event = match self.typ {
             InputEventType::Deposit => {
-                let amount = self.amount.ok_or_else(|| InputParseError::NoDepositAmount)?;
+                let amount = self.amount.ok_or(InputParseError::NoDepositAmount)?;
                 let amount = Money::parse(amount)?;
 
                 TransactionEvent::Deposit(DepositEvent {
@@ -52,7 +52,7 @@ impl InputEvent {
                 })
             },
             InputEventType::Withdrawal => {
-                let amount = self.amount.ok_or_else(|| InputParseError::NoWithdrawalAmount)?;
+                let amount = self.amount.ok_or(InputParseError::NoWithdrawalAmount)?;
                 let amount = Money::parse(amount)?;
 
                 TransactionEvent::Withdrawal(WithdrawalEvent {
@@ -75,6 +75,6 @@ impl InputEvent {
             }),
         };
 
-        return Ok(event);
+        Ok(event)
     }
 }

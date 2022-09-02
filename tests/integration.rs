@@ -18,7 +18,7 @@ fn example_files() {
 
         // Running command directly to prove everything works as expected
         let output = Command::new("cargo")
-            .args(["run", "--", &input_file.to_str().unwrap().to_string()])
+            .args(["run", "--", input_file.to_str().unwrap()])
             .output()
             .unwrap();
 

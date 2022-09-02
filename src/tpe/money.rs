@@ -21,7 +21,7 @@ pub enum MoneyError {
 /// Money type stores money as 1/100 of a cent. This prevents issues with floating-point rounding.
 /// ie. Money(123456) represents a monetary value of 12.3456
 /// Note: Money is stored as an i64, so the inner value must fit within the bounds of an i64.
-#[derive(Deserialize, Debug, Clone, Copy, PartialEq)]
+#[derive(Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Money(pub i64);
 
 impl Money {
@@ -30,7 +30,7 @@ impl Money {
 
     pub fn parse(string: String) -> Result<Self> {
         let str_to_split = string.clone();
-        let mut parts = str_to_split.split(".");
+        let mut parts = str_to_split.split('.');
 
         if parts.clone().count() > 2 {
             Err(MoneyError::Parse("Too many decimal points", string))?
@@ -49,7 +49,7 @@ impl Money {
         let dollars: i64 = dollars.parse()?;
         let cents: i64 = cents.parse()?;
 
-        return Ok(Money((dollars * 10000) + cents));
+        Ok(Money((dollars * 10000) + cents))
     }
 
     pub fn add(&mut self, other: &Self) -> Result {
@@ -68,12 +68,12 @@ impl Money {
 
         self.0 += b;
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn sub(&mut self, other: &Self) -> Result {
-        let other = Self(-1 * other.0);
-        return self.add(&other);
+        let other = Self(-other.0);
+        self.add(&other)
     }
 }
 
@@ -86,7 +86,7 @@ impl fmt::Display for Money {
         let dollars = &string[..pivot];
         let cents = &string[pivot..];
 
-        return write!(f, "{dollars}.{cents}");
+        write!(f, "{dollars}.{cents}")
     }
 }
 
@@ -115,17 +115,17 @@ mod tests {
 
     #[test]
     fn fail_to_parse_invalid_str() {
-        assert_eq!(Money::parse("".to_string()).is_ok(), false);
+        assert!(Money::parse("".to_string()).is_err());
     }
 
     #[test]
     fn fail_to_parse_too_big() {
-        assert_eq!(Money::parse(std::u128::MAX.to_string()).is_ok(), false);
+        assert!(Money::parse(std::u128::MAX.to_string()).is_err());
     }
 
     #[test]
     fn fail_to_parse_too_small() {
-        assert_eq!(Money::parse(std::i128::MIN.to_string()).is_ok(), false);
+        assert!(Money::parse(std::i128::MIN.to_string()).is_err());
     }
 
     #[test]
@@ -153,7 +153,7 @@ mod tests {
         let mut a = Money::MAX;
         let b = Money(1);
 
-        assert_eq!(a.add(&b).is_ok(), false);
+        assert!(a.add(&b).is_err());
     }
 
     #[test]
@@ -161,7 +161,7 @@ mod tests {
         let mut a = Money::MIN;
         let b = Money(-1);
 
-        assert_eq!(a.add(&b).is_ok(), false);
+        assert!(a.add(&b).is_err());
     }
 
     #[test]
@@ -179,7 +179,7 @@ mod tests {
         let mut a = Money::MAX;
         let b = Money(-1);
 
-        assert_eq!(a.sub(&b).is_ok(), false);
+        assert!(a.sub(&b).is_err());
     }
 
     #[test]
@@ -187,7 +187,7 @@ mod tests {
         let mut a = Money::MIN;
         let b = Money(1);
 
-        assert_eq!(a.sub(&b).is_ok(), false);
+        assert!(a.sub(&b).is_err());
     }
 }
 

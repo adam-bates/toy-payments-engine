@@ -13,6 +13,6 @@ pub fn build_csv_reader(filepath: PathBuf) -> Result<Reader<File>> {
         .trim(Trim::All)
         .from_path(filepath)?;
 
-    return Ok(reader);
+    Ok(reader)
 }
 

@@ -25,7 +25,7 @@ fn main() -> Result {
 
     log::debug!("Application finished successfully!");
 
-    return Ok(());
+    Ok(())
 }
  
 /// Read input file, process, and store results
@@ -47,20 +47,14 @@ fn process_data(transaction_service: &mut TransactionService) -> Result {
         let res = transaction_service.process_event(event);
 
         if let Err(e) = res {
-            match e.downcast_ref::<TransactionServiceError>() {
-                Some(e) => {
-                    log::warn!("{e}");
-                    continue;
-                }
-                _ => {}
+            if let Some(e) = e.downcast_ref::<TransactionServiceError>() {
+                log::warn!("{e}");
+                continue;
             }
 
-            match e.downcast_ref::<AccountServiceError>() {
-                Some(e) => {
-                    log::warn!("{e}");
-                    continue;
-                },
-                _ => {}
+            if let Some(e) = e.downcast_ref::<AccountServiceError>() {
+                log::warn!("{e}");
+                continue;
             }
 
             log::error!("Unrecoverable: {e}");
@@ -69,7 +63,7 @@ fn process_data(transaction_service: &mut TransactionService) -> Result {
         }
     }
 
-    return Ok(());
+    Ok(())
 }
 
 /// Build report from results, and write report to stdout
@@ -90,5 +84,5 @@ fn report_to_std_out(account_service: &AccountService) -> Result {
     log::debug!("Writing to stdout: {output:?}");
     println!("{}", output);
 
-    return Ok(());
+    Ok(())
 }

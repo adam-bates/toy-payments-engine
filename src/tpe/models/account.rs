@@ -11,10 +11,10 @@ pub struct Account {
 
 impl Account {
     pub fn new(client_id: ClientId) -> Self {
-        return Self {
+        Self {
             client_id,
             transactions: Transactions::new(),
             snapshot: Snapshot::new(),
-        };
+        }
     }
 }

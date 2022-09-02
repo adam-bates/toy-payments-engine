@@ -28,7 +28,7 @@ pub struct TransactionService {
 
 impl TransactionService {
     pub fn new(account_service: AccountService) -> Self {
-        return Self { account_service };
+        Self { account_service }
     }
 
     pub fn process_event(&mut self, event: TransactionEvent) -> Result {
@@ -46,12 +46,12 @@ impl TransactionService {
             TransactionEvent::ChargeBack(event) => self.process_charge_back_event(event)?,
         }
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn take(self) -> AccountService {
         log::debug!("Destructuring TransactionService");
-        return self.account_service;
+        self.account_service
     }
 
     fn process_deposit_event(&mut self, event: DepositEvent) -> Result {
@@ -63,7 +63,7 @@ impl TransactionService {
         self.account_service
             .process_valid_transaction(event.client_id, transaction)?;
 
-        return Ok(());
+        Ok(())
     }
 
     fn process_withdrawal_event(&mut self, event: WithdrawalEvent) -> Result {
@@ -78,7 +78,7 @@ impl TransactionService {
         self.account_service
             .process_valid_transaction(event.client_id, transaction)?;
 
-        return Ok(());
+        Ok(())
     }
 
     fn process_dispute_event(&mut self, event: DisputeEvent) -> Result {
@@ -98,7 +98,7 @@ impl TransactionService {
             .transactions
             .replace(event.transaction_id, |transaction| match transaction {
                 Transaction::Valid(transaction) => {
-                    return Ok(Transaction::Disputed(transaction.dispute()))
+                    Ok(Transaction::Disputed(transaction.dispute()))
                 }
                 _ => Err(TransactionServiceError::InvalidEvent(format!(
                     "Dispute event on a non-valid transaction: {:?}",
@@ -127,7 +127,7 @@ impl TransactionService {
         self.account_service
             .process_dispute_transaction(&event.client_id, &transaction)?;
 
-        return Ok(());
+        Ok(())
     }
 
     fn process_resolve_event(&mut self, event: ResolveEvent) -> Result {
@@ -147,7 +147,7 @@ impl TransactionService {
             .transactions
             .replace(event.transaction_id, |transaction| match transaction {
                 Transaction::Disputed(transaction) => {
-                    return Ok(Transaction::Valid(transaction.resolve()))
+                    Ok(Transaction::Valid(transaction.resolve()))
                 }
                 _ => Err(TransactionServiceError::InvalidEvent(format!(
                     "Resolve event on a non-disputed transaction: {:?}",
@@ -174,7 +174,7 @@ impl TransactionService {
         self.account_service
             .process_resolve_transaction(&event.client_id, &transaction)?;
 
-        return Ok(());
+        Ok(())
     }
 
     fn process_charge_back_event(&mut self, event: ChargeBackEvent) -> Result {
@@ -194,7 +194,7 @@ impl TransactionService {
             .transactions
             .replace(event.transaction_id, |transaction| match transaction {
                 Transaction::Disputed(transaction) => {
-                    return Ok(Transaction::ChargedBack(transaction.charge_back()))
+                    Ok(Transaction::ChargedBack(transaction.charge_back()))
                 }
                 _ => Err(TransactionServiceError::InvalidEvent(format!(
                     "ChargeBack event on a non-disputed transaction: {:?}",
@@ -223,7 +223,7 @@ impl TransactionService {
         self.account_service
             .process_charge_back_transaction(&event.client_id, &transaction)?;
 
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -264,7 +264,7 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         let account_service = transaction_service.take();
         assert_eq!(
@@ -297,7 +297,7 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         let account_service = transaction_service.take();
         assert_eq!(
@@ -336,11 +336,11 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         let account_service = transaction_service.take();
 
-        let mut expected_total = SOME_AMOUNT.clone();
+        let mut expected_total = SOME_AMOUNT;
         expected_total.add(&SOME_SMALL_AMOUNT).unwrap();
 
         assert_eq!(
@@ -379,11 +379,11 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         let account_service = transaction_service.take();
 
-        let mut expected_available = SOME_AMOUNT.clone();
+        let mut expected_available = SOME_AMOUNT;
         expected_available.sub(&SOME_SMALL_AMOUNT).unwrap();
 
         assert_eq!(
@@ -421,7 +421,7 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         let account_service = transaction_service.take();
 
@@ -467,11 +467,11 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         let account_service = transaction_service.take();
 
-        let mut expected_available = SOME_AMOUNT.clone();
+        let mut expected_available = SOME_AMOUNT;
         expected_available.sub(&SOME_SMALL_AMOUNT).unwrap();
 
         assert_eq!(
@@ -516,7 +516,7 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         let account_service = transaction_service.take();
 
@@ -562,7 +562,7 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), true);
+        assert!(res.is_ok());
 
         let account_service = transaction_service.take();
 
@@ -595,13 +595,13 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), false);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
         match e.downcast_ref::<TransactionServiceError>() {
             Some(e) => match e {
-                TransactionServiceError::InvalidEvent(_) => assert_eq!(true, true),
-                _ => assert_eq!(false, true),
+                TransactionServiceError::InvalidEvent(_) => {},
+                _ => panic!("Invalid: {e}"),
             },
             _ => panic!("Invalid: {e}"),
         }
@@ -637,13 +637,13 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), false);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
         match e.downcast_ref::<TransactionServiceError>() {
             Some(e) => match e {
-                TransactionServiceError::InvalidEvent(_) => assert_eq!(true, true),
-                _ => assert_eq!(false, true),
+                TransactionServiceError::InvalidEvent(_) => {},
+                _ => panic!("Invalid: {e}"),
             },
             _ => panic!("Invalid: {e}"),
         }
@@ -680,13 +680,13 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), false);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
         match e.downcast_ref::<AccountServiceError>() {
             Some(e) => match e {
-                AccountServiceError::InvalidWithdrawal(_) => assert_eq!(true, true),
-                _ => assert_eq!(false, true),
+                AccountServiceError::InvalidWithdrawal(_) => {},
+                _ => panic!("Invalid: {e}"),
             },
             _ => panic!("Invalid: {e}"),
         }
@@ -728,13 +728,13 @@ mod tests {
         });
 
         let res = transaction_service.process_event(event);
-        assert_eq!(res.is_ok(), false);
+        assert!(res.is_err());
 
         let e = res.err().unwrap();
         match e.downcast_ref::<TransactionServiceError>() {
             Some(e) => match e {
-                TransactionServiceError::InvalidEvent(_) => assert_eq!(true, true),
-                _ => assert_eq!(false, true),
+                TransactionServiceError::InvalidEvent(_) => {},
+                _ => panic!("Invalid: {e}")
             },
             _ => panic!("Invalid: {e}"),
         }

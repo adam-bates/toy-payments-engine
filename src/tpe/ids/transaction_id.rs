@@ -7,7 +7,7 @@ pub struct TransactionId(pub u32);
 
 impl fmt::Display for TransactionId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        return write!(f, "{}", self.0);
+        write!(f, "{}", self.0)
     }
 }
 

@@ -11,6 +11,6 @@ pub fn configure_app() -> Result {
         .env()
         .init()?;
 
-    return Ok(());
+    Ok(())
 }
 
