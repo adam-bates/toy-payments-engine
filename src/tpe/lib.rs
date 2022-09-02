@@ -2,10 +2,13 @@ pub mod events;
 pub mod ids;
 pub mod input;
 pub mod models;
-mod money;
-mod result;
 pub mod services;
 
+mod account_report;
+mod money;
+mod result;
+
+pub use account_report::AccountReport;
 pub use money::Money;
 pub use result::Result;
 

@@ -1,8 +1,9 @@
 use crate::ids::ClientId;
 use crate::models::{
-    Account, AccountReport, ChargedBackTransaction, DisputedTransaction, TransactionType,
+    Account, ChargedBackTransaction, DisputedTransaction, TransactionType,
     ValidTransaction,
 };
+use crate::AccountReport;
 use crate::Result;
 
 use std::collections::HashMap;
