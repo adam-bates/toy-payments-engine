@@ -43,10 +43,10 @@ impl AccountService {
             total.add(&account.snapshot.held)?;
 
             report.push(AccountReport {
-                client: account.client_id,
-                available: account.snapshot.available,
-                held: account.snapshot.held,
-                total,
+                client: account.client_id.to_string(),
+                available: account.snapshot.available.to_string(),
+                held: account.snapshot.held.to_string(),
+                total: total.to_string(),
                 locked: account.snapshot.locked,
             });
         }

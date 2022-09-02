@@ -1,12 +1,11 @@
-use crate::ids::ClientId;
-use crate::Money;
+use serde::Serialize;
 
-#[derive(Debug)]
+#[derive(Serialize, Debug)]
 pub struct AccountReport {
-    pub client: ClientId,
-    pub available: Money,
-    pub held: Money,
-    pub total: Money,
+    pub client: String,
+    pub available: String,
+    pub held: String,
+    pub total: String,
     pub locked: bool,
 }
 

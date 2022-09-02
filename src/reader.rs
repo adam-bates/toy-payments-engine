@@ -7,7 +7,7 @@ use std::{
 
 use csv::{Reader, ReaderBuilder, Trim};
 
-pub fn read_csv(filepath: PathBuf) -> Result<Reader<File>> {
+pub fn build_csv_reader(filepath: PathBuf) -> Result<Reader<File>> {
     let reader = ReaderBuilder::new()
         .trim(Trim::All)
         .from_path(filepath)?;
