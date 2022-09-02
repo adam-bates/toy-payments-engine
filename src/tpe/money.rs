@@ -18,7 +18,7 @@ pub enum MoneyError {
     Parse(&'static str, String),
 }
 
-#[derive(Deserialize, Debug, Clone, Copy)]
+#[derive(Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct Money(pub i64);
 
 impl Money {

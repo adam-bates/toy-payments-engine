@@ -17,14 +17,14 @@ pub fn new_transaction(
     });
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TransactionData {
     pub id: TransactionId,
     pub transaction_type: TransactionType,
     pub amount: Money,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Transaction {
     Valid(ValidTransaction),
     Disputed(DisputedTransaction),
@@ -42,7 +42,7 @@ impl Deref for Transaction {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ValidTransaction(TransactionData);
 impl ValidTransaction {
     pub fn dispute(self) -> DisputedTransaction {
@@ -57,7 +57,7 @@ impl Deref for ValidTransaction {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DisputedTransaction(TransactionData);
 impl DisputedTransaction {
     pub fn resolve(self) -> ValidTransaction {
@@ -76,7 +76,7 @@ impl Deref for DisputedTransaction {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ChargedBackTransaction(TransactionData);
 impl Deref for ChargedBackTransaction {
     type Target = TransactionData;

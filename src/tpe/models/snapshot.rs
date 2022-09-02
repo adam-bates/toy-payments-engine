@@ -1,6 +1,6 @@
 use crate::{Money, ids::TransactionId};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Snapshot {
     pub from: Option<TransactionId>,
     pub available: Money,

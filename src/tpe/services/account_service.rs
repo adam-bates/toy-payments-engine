@@ -1,6 +1,7 @@
 use crate::ids::ClientId;
 use crate::models::{
-    Account, ChargedBackTransaction, DisputedTransaction, TransactionType, ValidTransaction,
+    Account, ChargedBackTransaction, DisputedTransaction, Transaction, TransactionType,
+    ValidTransaction,
 };
 use crate::AccountReport;
 use crate::Result;
@@ -68,7 +69,7 @@ impl AccountService {
     pub fn process_valid_transaction(
         &mut self,
         client_id: ClientId,
-        transaction: &ValidTransaction,
+        transaction: ValidTransaction,
     ) -> Result {
         let account = self.find_or_create(client_id);
 
@@ -90,6 +91,10 @@ impl AccountService {
                 account.snapshot.available.sub(&transaction.amount)?;
             }
         }
+
+        account.snapshot.from = Some(transaction.id);
+
+        account.transactions.push(Transaction::Valid(transaction));
 
         return Ok(());
     }
@@ -185,5 +190,535 @@ impl AccountService {
         }
 
         return self.repository.get_mut(&client_id).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{ids::TransactionId, models::{new_transaction, Snapshot}, Money};
+
+    use super::*;
+
+    const SOME_TRANSACTION_ID: TransactionId = TransactionId(123);
+    const OTHER_TRANSACTION_ID: TransactionId = TransactionId(321);
+
+    const SOME_CLIENT_ID: ClientId = ClientId(40);
+    const OTHER_CLIENT_ID: ClientId = ClientId(41);
+
+    const SOME_AMOUNT: Money = Money(555444);
+    const OTHER_AMOUNT: Money = Money(1000);
+
+    #[test]
+    fn process_valid_deposit() {
+        let mut account_service = AccountService::new();
+
+        let transaction1 =
+            new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+
+        let transaction2 =
+            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Deposit, OTHER_AMOUNT);
+
+        let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone());
+        assert_eq!(res.is_ok(), true);
+
+        let res = account_service.process_valid_transaction(OTHER_CLIENT_ID, transaction2.clone());
+        assert_eq!(res.is_ok(), true);
+
+        assert_eq!(account_service.repository.len(), 2);
+
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .transactions
+                .get_all(),
+            vec![&Transaction::Valid(transaction1)]
+        );
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(SOME_TRANSACTION_ID),
+                available: SOME_AMOUNT,
+                held: Money(0),
+                locked: false,
+            }
+        );
+        
+        assert_eq!(
+            account_service
+                .repository
+                .get(&OTHER_CLIENT_ID)
+                .unwrap()
+                .transactions
+                .get_all(),
+            vec![&Transaction::Valid(transaction2)]
+        );
+        assert_eq!(
+            account_service
+                .repository
+                .get(&OTHER_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(OTHER_TRANSACTION_ID),
+                available: OTHER_AMOUNT,
+                held: Money(0),
+                locked: false,
+            }
+        );
+    }
+
+    #[test]
+    fn process_valid_withdrawal() {
+        let mut account_service = AccountService::new();
+
+        let transaction1 =
+            new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+
+        let transaction2 =
+            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
+
+        let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone());
+        assert_eq!(res.is_ok(), true);
+
+        assert_eq!(account_service.repository.len(), 1);
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .transactions
+                .get_all(),
+            vec![&Transaction::Valid(transaction1), &Transaction::Valid(transaction2)]
+        );
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(OTHER_TRANSACTION_ID),
+                available: Money(0),
+                held: Money(0),
+                locked: false,
+            }
+        );
+    }
+
+    #[test]
+    fn process_dispute_deposit() {
+        let mut account_service = AccountService::new();
+
+        let transaction =
+            new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction.clone()).unwrap();
+
+        let transaction = transaction.dispute();
+
+        let res = account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction);
+        assert_eq!(res.is_ok(), true);
+
+        assert_eq!(account_service.repository.len(), 1);
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(SOME_TRANSACTION_ID),
+                available: Money(0),
+                held: SOME_AMOUNT,
+                locked: false,
+            }
+        );
+    }
+
+    #[test]
+    fn process_dispute_withdrawal() {
+        let mut account_service = AccountService::new();
+
+        let transaction1 =
+            new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+
+        let transaction2 =
+            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone()).unwrap();
+
+        let transaction2 = transaction2.dispute();
+
+        let res = account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction2);
+        assert_eq!(res.is_ok(), true);
+
+        assert_eq!(account_service.repository.len(), 1);
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(OTHER_TRANSACTION_ID),
+                available: Money(0),
+                held: SOME_AMOUNT,
+                locked: false,
+            }
+        );
+    }
+
+    #[test]
+    fn process_resolve_deposit() {
+        let mut account_service = AccountService::new();
+
+        let transaction =
+            new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction.clone()).unwrap();
+
+        let transaction = transaction.dispute();
+        account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction).unwrap();
+
+        let transaction = transaction.resolve();
+
+        let res = account_service.process_resolve_transaction(&SOME_CLIENT_ID, &transaction);
+        assert_eq!(res.is_ok(), true);
+
+        assert_eq!(account_service.repository.len(), 1);
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(SOME_TRANSACTION_ID),
+                available: SOME_AMOUNT,
+                held: Money(0),
+                locked: false,
+            }
+        );
+    }
+
+    #[test]
+    fn process_resolve_withdrawal() {
+        let mut account_service = AccountService::new();
+
+        let transaction1 =
+            new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+
+        let transaction2 =
+            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone()).unwrap();
+
+        let transaction2 = transaction2.dispute();
+        account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction2).unwrap();
+
+        let transaction2 = transaction2.resolve();
+
+        let res = account_service.process_resolve_transaction(&SOME_CLIENT_ID, &transaction2);
+        assert_eq!(res.is_ok(), true);
+
+        assert_eq!(account_service.repository.len(), 1);
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(OTHER_TRANSACTION_ID),
+                available: Money(0),
+                held: Money(0),
+                locked: false,
+            }
+        );
+    }
+
+    #[test]
+    fn process_charge_back_deposit() {
+        let mut account_service = AccountService::new();
+
+        let transaction =
+            new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction.clone()).unwrap();
+
+        let transaction = transaction.dispute();
+        account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction).unwrap();
+
+        let transaction = transaction.charge_back();
+
+        let res = account_service.process_charge_back_transaction(&SOME_CLIENT_ID, &transaction);
+        assert_eq!(res.is_ok(), true);
+
+        assert_eq!(account_service.repository.len(), 1);
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(SOME_TRANSACTION_ID),
+                available: Money(0),
+                held: Money(0),
+                locked: true,
+            }
+        );
+    }
+
+    #[test]
+    fn process_charge_back_withdrawal() {
+        let mut account_service = AccountService::new();
+
+        let transaction1 =
+            new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+
+        let transaction2 =
+            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone()).unwrap();
+
+        let transaction2 = transaction2.dispute();
+        account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction2).unwrap();
+
+        let transaction2 = transaction2.charge_back();
+
+        let res = account_service.process_charge_back_transaction(&SOME_CLIENT_ID, &transaction2);
+        assert_eq!(res.is_ok(), true);
+
+        assert_eq!(account_service.repository.len(), 1);
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(OTHER_TRANSACTION_ID),
+                available: SOME_AMOUNT,
+                held: Money(0),
+                locked: true,
+            }
+        );
+    }
+
+    #[test]
+    fn fail_to_process_invalid_withdrawal() {
+        let mut account_service = AccountService::new();
+
+        let transaction1 =
+            new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+
+        let mut invalid_amount = SOME_AMOUNT.clone();
+        invalid_amount.add(&OTHER_AMOUNT).unwrap();
+
+        let transaction2 =
+            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, invalid_amount);
+
+        let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone());
+        assert_eq!(res.is_ok(), false);
+
+        let e = res.err().unwrap();
+
+        match e.downcast_ref::<AccountServiceError>() {
+            Some(e) => match e {
+                AccountServiceError::InvalidWithdrawal(_) => assert_eq!(true, true),
+                _ => panic!("Invalid: {e}"),
+            },
+            _ => panic!("Invalid: {e}"),
+        }
+
+        assert_eq!(account_service.repository.len(), 1);
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .transactions
+                .get_all(),
+            vec![&Transaction::Valid(transaction1)]
+        );
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(SOME_TRANSACTION_ID),
+                available: SOME_AMOUNT,
+                held: Money(0),
+                locked: false,
+            }
+        );
+    }
+
+    #[test]
+    fn fail_to_process_invalid_client_id() {
+        let mut account_service = AccountService::new();
+
+        let transaction =
+            new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction.clone()).unwrap();
+
+        let transaction = transaction.dispute();
+
+        let res = account_service.process_dispute_transaction(&OTHER_CLIENT_ID, &transaction);
+        assert_eq!(res.is_ok(), false);
+
+        let e = res.err().unwrap();
+
+        match e.downcast_ref::<AccountServiceError>() {
+            Some(e) => match e {
+                AccountServiceError::AccountNotFound(_) => assert_eq!(true, true),
+                _ => panic!("Invalid: {e}"),
+            },
+            _ => panic!("Invalid: {e}"),
+        }
+
+        let resolved = transaction.clone().resolve();
+
+        let res = account_service.process_resolve_transaction(&OTHER_CLIENT_ID, &resolved);
+        assert_eq!(res.is_ok(), false);
+
+        let e = res.err().unwrap();
+
+        match e.downcast_ref::<AccountServiceError>() {
+            Some(e) => match e {
+                AccountServiceError::AccountNotFound(_) => assert_eq!(true, true),
+                _ => panic!("Invalid: {e}"),
+            },
+            _ => panic!("Invalid: {e}"),
+        }
+
+        let charged_back = transaction.clone().charge_back();
+
+        let res = account_service.process_charge_back_transaction(&OTHER_CLIENT_ID, &charged_back);
+        assert_eq!(res.is_ok(), false);
+
+        let e = res.err().unwrap();
+
+        match e.downcast_ref::<AccountServiceError>() {
+            Some(e) => match e {
+                AccountServiceError::AccountNotFound(_) => assert_eq!(true, true),
+                _ => panic!("Invalid: {e}"),
+            },
+            _ => panic!("Invalid: {e}"),
+        }
+
+        assert_eq!(account_service.repository.len(), 1);
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(SOME_TRANSACTION_ID),
+                available: SOME_AMOUNT,
+                held: Money(0),
+                locked: false,
+            }
+        );
+    }
+
+    #[test]
+    fn fail_to_process_on_locked_account() {
+        let mut account_service = AccountService::new();
+
+        let transaction1 =
+            new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+
+        let transaction1 = transaction1.dispute();
+        account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction1).unwrap();
+
+        let transaction1 = transaction1.charge_back();
+        account_service.process_charge_back_transaction(&SOME_CLIENT_ID, &transaction1).unwrap();
+
+        let transaction2 = new_transaction(OTHER_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+
+        let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone());
+        assert_eq!(res.is_ok(), false);
+
+        let e = res.err().unwrap();
+
+        match e.downcast_ref::<AccountServiceError>() {
+            Some(e) => match e {
+                AccountServiceError::AccountLocked(_) => assert_eq!(true, true),
+                _ => panic!("Invalid: {e}"),
+            },
+            _ => panic!("Invalid: {e}"),
+        }
+
+        let transaction2 = transaction2.dispute();
+
+        let res = account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction2);
+        assert_eq!(res.is_ok(), false);
+
+        let e = res.err().unwrap();
+
+        match e.downcast_ref::<AccountServiceError>() {
+            Some(e) => match e {
+                AccountServiceError::AccountLocked(_) => assert_eq!(true, true),
+                _ => panic!("Invalid: {e}"),
+            },
+            _ => panic!("Invalid: {e}"),
+        }
+
+
+        let resolved = transaction2.clone().resolve();
+
+        let res = account_service.process_resolve_transaction(&SOME_CLIENT_ID, &resolved);
+        assert_eq!(res.is_ok(), false);
+
+        let e = res.err().unwrap();
+
+        match e.downcast_ref::<AccountServiceError>() {
+            Some(e) => match e {
+                AccountServiceError::AccountLocked(_) => assert_eq!(true, true),
+                _ => panic!("Invalid: {e}"),
+            },
+            _ => panic!("Invalid: {e}"),
+        }
+
+        let charged_back = transaction2.clone().charge_back();
+
+        let res = account_service.process_charge_back_transaction(&SOME_CLIENT_ID, &charged_back);
+        assert_eq!(res.is_ok(), false);
+
+        let e = res.err().unwrap();
+
+        match e.downcast_ref::<AccountServiceError>() {
+            Some(e) => match e {
+                AccountServiceError::AccountLocked(_) => assert_eq!(true, true),
+                _ => panic!("Invalid: {e}"),
+            },
+            _ => panic!("Invalid: {e}"),
+        }
+
+        assert_eq!(account_service.repository.len(), 1);
+        assert_eq!(
+            account_service
+                .repository
+                .get(&SOME_CLIENT_ID)
+                .unwrap()
+                .snapshot,
+            Snapshot {
+                from: Some(SOME_TRANSACTION_ID),
+                available: Money(0),
+                held: Money(0),
+                locked: true,
+            }
+        );
     }
 }
