@@ -1,29 +1,29 @@
-use tpe::Result;
+mod args;
+mod reader;
+
+use tpe::{
+    input::InputEvent,
+    events::TransactionEvent,
+    Result,
+};
 
 fn main() -> Result {
+    let input_path = args::parse_input_arg()?;
+    let mut rdr = reader::read_csv(input_path)?;
+
     let mut transaction_service = tpe::build_transaction_service();
 
-    let event = tpe::events::TransactionEvent::Deposit(tpe::events::DepositEvent {
-        transaction_id: tpe::ids::TransactionId(1),
-        client_id: tpe::ids::ClientId(1),
-        amount: tpe::Money(1),
-    });
-
-    let mut rdr = csv::Reader::from_reader("\
-type,client,tx,amount
-deposit,1,1,1.
-".as_bytes());
-
     for record in rdr.deserialize() {
-        let record: tpe::input::InputEvent = record?;
-        println!("{:?}", record);
+        let event: InputEvent = record?;
+        let event: TransactionEvent = event.parse()?;
 
-        let event = record.parse()?;
-        println!("{:?}", event);
+        transaction_service.process_event(event)?;
     }
 
-    transaction_service.process_event(event)?;
+    let account_service = transaction_service.take();
+    let report = account_service.build_report();
+
+    println!("{:?}", report);
 
     return Ok(());
 }
-

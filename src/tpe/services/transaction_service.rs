@@ -44,13 +44,18 @@ impl TransactionService {
         return Ok(());
     }
 
+    pub fn take(self) -> AccountService {
+        return self.account_service;
+    }
+
     fn process_deposit_event(&mut self, event: DepositEvent) -> Result {
         let transaction =
             new_transaction(event.transaction_id, TransactionType::Deposit, event.amount);
 
         self.account_service
             .process_valid_transaction(event.client_id, &transaction)?;
-        todo!();
+
+        return Ok(());
     }
 
     fn process_withdrawal_event(&mut self, event: WithdrawalEvent) -> Result {
@@ -63,7 +68,7 @@ impl TransactionService {
         self.account_service
             .process_valid_transaction(event.client_id, &transaction)?;
 
-        todo!();
+        return Ok(());
     }
 
     fn process_dispute_event(&mut self, event: DisputeEvent) -> Result {

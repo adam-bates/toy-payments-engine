@@ -1,6 +1,7 @@
 use crate::ids::ClientId;
 use crate::models::{
-    Account, ChargedBackTransaction, DisputedTransaction, TransactionType, ValidTransaction,
+    Account, AccountReport, ChargedBackTransaction, DisputedTransaction, TransactionType,
+    ValidTransaction,
 };
 use crate::Result;
 
@@ -17,6 +18,9 @@ pub enum AccountServiceError {
 
     #[error("Account locked, cannot process transactions")]
     AccountLocked(ClientId),
+
+    #[error("Invalid withdrawal attempt: {0}")]
+    InvalidWithdrawal(String),
 }
 
 pub struct AccountService {
@@ -28,6 +32,25 @@ impl AccountService {
         return Self {
             repository: AccountDataStore::new(),
         };
+    }
+
+    pub fn build_report(&self) -> Result<Vec<AccountReport>> {
+        let mut report = vec![];
+
+        for account in self.repository.values() {
+            let mut total = account.snapshot.available.clone();
+            total.add(&account.snapshot.held)?;
+
+            report.push(AccountReport {
+                client: account.client_id,
+                available: account.snapshot.available,
+                held: account.snapshot.held,
+                total,
+                locked: account.snapshot.locked,
+            });
+        }
+
+        return Ok(report);
     }
 
     pub fn process_valid_transaction(
@@ -46,6 +69,12 @@ impl AccountService {
                 account.snapshot.available.add(&transaction.amount)?;
             }
             TransactionType::Withdrawal => {
+                if account.snapshot.available.0 < transaction.amount.0 {
+                    Err(AccountServiceError::InvalidWithdrawal(format!(
+                        "Cannot withdraw {} from client {} when available amount is {}",
+                        transaction.amount, account.client_id, account.snapshot.available
+                    )))?
+                }
                 account.snapshot.available.sub(&transaction.amount)?;
             }
         }

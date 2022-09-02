@@ -1,5 +1,7 @@
 use crate::Result;
 
+use std::fmt;
+
 use thiserror::Error;
 
 use serde::Deserialize;
@@ -41,9 +43,6 @@ impl Money {
             Some(cents) => format!("{:0<4}", cents)[..4].to_string(), 
         };
 
-        dbg!(&dollars);
-        dbg!(&cents);
-
         let dollars: i64 = dollars.parse()?;
         let cents: i64 = cents.parse()?;
 
@@ -72,6 +71,19 @@ impl Money {
     pub fn sub(&mut self, other: &Self) -> Result {
         let other = Self(-1 * other.0);
         return self.add(&other);
+    }
+}
+
+impl fmt::Display for Money {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let string = format!("{:0<5}", self.0);
+
+        let pivot = string.len() - 4;
+
+        let dollars = &string[..pivot];
+        let cents = &string[pivot..];
+
+        return write!(f, "{dollars}.{cents}");
     }
 }
 
