@@ -135,7 +135,7 @@ The `AccountService` is responsible for 3 things:
 2. Applying transactions to account snapshots (ie. updating funds)
 3. Building overview report of all accounts
 
-- Link to `AccountService`: [src/tpe/services/account_service.rs:32](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/services/account_service.rs#L32)
+- Link to `AccountService`: [src/tpe/services/account_service.rs:32](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/services/account_service.rs#L35)
 
 ## Part 3: Report 📈
 
