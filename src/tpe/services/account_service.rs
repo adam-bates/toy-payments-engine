@@ -12,9 +12,6 @@ pub type AccountDataStore = HashMap<ClientId, Account>;
 
 #[derive(Error, Debug)]
 pub enum AccountServiceError {
-    #[error("Invalid account snapshot: {0}")]
-    InvalidSnapshot(String),
-
     #[error("Account not found: {0}")]
     AccountNotFound(ClientId),
 
