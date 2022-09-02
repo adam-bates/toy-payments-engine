@@ -38,10 +38,23 @@ fn process_data(transaction_service: &mut TransactionService) -> Result {
     log::debug!("Deserializing reader...");
     for record in rdr.deserialize() {
         log::debug!("Prasing record into InputEvent: {record:?}");
-        let event: InputEvent = record?;
+
+        let event: InputEvent = if let Ok(event) = record {
+            event
+        } else {
+            log::error!("{record:?}");
+            continue;
+        };
 
         log::debug!("Parsing input event into TransactionEvent: {event:?}");
-        let event: TransactionEvent = event.parse()?;
+
+        let res = event.parse();
+        let event: TransactionEvent = if let Ok(event) = res {
+            event
+        } else {
+            log::error!("{res:?}");
+            continue;
+        };
 
         log::debug!("Processessing transaction event: {event:?}");
         let res = transaction_service.process_event(event);
