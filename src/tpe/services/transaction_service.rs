@@ -15,6 +15,9 @@ use thiserror::Error;
 pub enum TransactionServiceError {
     #[error("Invalid transaction event: {0}")]
     InvalidEvent(String),
+
+    #[error("Unknown error: {0}")]
+    Unknown(String),
 }
 
 pub struct TransactionService {
@@ -104,7 +107,9 @@ impl TransactionService {
             if let Transaction::Disputed(transaction) = transaction {
                 transaction.clone()
             } else {
-                unreachable!();
+                let msg = format!("Impossible state encountered: transaction was not Disputed after successful mapping: {:?}", transaction);
+                log::error!("{}", msg);
+                Err(TransactionServiceError::Unknown(msg))?
             };
 
         self.account_service
@@ -145,7 +150,9 @@ impl TransactionService {
         let transaction: ValidTransaction = if let Transaction::Valid(transaction) = transaction {
             transaction.clone()
         } else {
-            unreachable!();
+            let msg = format!("Impossible state encountered: transaction was not Valid after successful mapping: {:?}", transaction);
+            log::error!("{}", msg);
+            Err(TransactionServiceError::Unknown(msg))?
         };
 
         self.account_service
@@ -187,7 +194,9 @@ impl TransactionService {
             if let Transaction::ChargedBack(transaction) = transaction {
                 transaction.clone()
             } else {
-                unreachable!();
+                let msg = format!("Impossible state encountered: transaction was not ChargedBack after successful mapping: {:?}", transaction);
+                log::error!("{}", msg);
+                Err(TransactionServiceError::Unknown(msg))?
             };
 
         self.account_service

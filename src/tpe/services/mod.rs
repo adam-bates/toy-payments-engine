@@ -1,6 +1,6 @@
 mod account_service;
 mod transaction_service;
 
-pub use account_service::AccountService;
-pub use transaction_service::TransactionService;
+pub use account_service::{AccountService, AccountServiceError};
+pub use transaction_service::{TransactionService, TransactionServiceError};
 

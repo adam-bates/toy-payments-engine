@@ -1,14 +1,17 @@
 mod args;
+mod config;
 mod reader;
 mod writer;
 
 use tpe::{
     input::InputEvent,
     events::TransactionEvent,
-    Result, services::{TransactionService, AccountService},
+    Result, services::{TransactionService, AccountService, TransactionServiceError, AccountServiceError},
 };
 
 fn main() -> Result {
+    config::configure_app()?;
+
     let mut transaction_service = tpe::build_transaction_service();
     process_data(&mut transaction_service)?;
 
@@ -26,7 +29,30 @@ fn process_data(transaction_service: &mut TransactionService) -> Result {
         let event: InputEvent = record?;
         let event: TransactionEvent = event.parse()?;
 
-        transaction_service.process_event(event)?;
+        let res = transaction_service.process_event(event);
+
+        if let Err(e) = res {
+            match e.downcast_ref::<TransactionServiceError>() {
+                Some(e) => {
+                    log::warn!("{e:?}");
+                    continue;
+                },
+                _ => {},
+            }
+
+            match e.downcast_ref::<AccountServiceError>() {
+                Some(e) => match e {
+                    AccountServiceError::InvalidWithdrawal(msg) => {
+                        log::warn!("{:?}", AccountServiceError::InvalidWithdrawal(msg.to_string()));
+                        continue;
+                    },
+                    _ => {},
+                },
+                _ => {},
+            }
+
+            Err(e)?
+        }
     }
 
     return Ok(());

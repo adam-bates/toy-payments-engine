@@ -10,5 +10,8 @@ path = "src/tpe/lib.rs"
 [dependencies]
 anyhow = "1.0.63"
 csv = "1.1.6"
+log = "0.4.17"
 serde = { version = "1.0.144", features = ["derive"] }
+simple_logger = { version = "2.3.0", features = ["stderr"] }
 thiserror = "1.0.33"
+
