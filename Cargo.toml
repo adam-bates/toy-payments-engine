@@ -8,3 +8,5 @@ name = "tpe" # tpe: toy payments engine
 path = "src/tpe/lib.rs"
 
 [dependencies]
+anyhow = "1.0.63"
+thiserror = "1.0.33"

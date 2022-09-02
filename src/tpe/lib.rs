@@ -2,6 +2,12 @@ mod events;
 mod ids;
 mod models;
 mod money;
+mod services;
+mod result;
+
+use money::Money;
+
+pub use result::Result;
 
 use std::fmt;
 

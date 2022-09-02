@@ -1,8 +1,8 @@
-use super::Transaction;
+use super::{Transaction, TransactionData};
 
 use crate::ids::TransactionId;
 
-use std::collections::{HashMap, hash_map::Values};
+use std::collections::HashMap;
 
 type TxValue = Box<dyn Transaction>;
 
@@ -55,6 +55,15 @@ impl Transactions {
 
     pub fn get_since_or_all(&self, id: &TransactionId) -> Vec<&TxValue> {
         return self.get_since(id).unwrap_or_else(|| self.get_all());
+    }
+
+    pub fn push(&mut self, transaction: Box<dyn Transaction>) {
+        let data: &TransactionData = &transaction;
+        let id = data.id;
+
+        self.map.insert(id, transaction);
+
+        self.chron.push(id);
     }
 }
 

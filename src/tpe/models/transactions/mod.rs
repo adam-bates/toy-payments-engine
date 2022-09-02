@@ -8,6 +8,7 @@ pub use state::{
     ValidTransaction,
     DisputedTransaction,
     ChargedBackTransaction,
+    new_transaction,
 };
 pub use transaction::{
     Transaction,

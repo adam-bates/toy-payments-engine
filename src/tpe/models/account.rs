@@ -1,5 +1,4 @@
-use super::Transactions;
-use super::Snapshot;
+use super::{Snapshot, Transactions};
 
 use crate::ids::ClientId;
 
@@ -8,4 +7,3 @@ pub struct Account {
     pub transactions: Transactions,
     pub snapshot: Snapshot,
 }
-
