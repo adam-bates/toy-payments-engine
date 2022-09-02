@@ -27,7 +27,8 @@ fn main() -> Result {
 
     return Ok(());
 }
-
+ 
+/// Read input file, process, and store results
 fn process_data(transaction_service: &mut TransactionService) -> Result {
     let input_path = args::parse_input_arg()?;
     log::debug!("Found filepath as input arg: {input_path:?}");
@@ -71,6 +72,7 @@ fn process_data(transaction_service: &mut TransactionService) -> Result {
     return Ok(());
 }
 
+/// Build report from results, and write report to stdout
 fn report_to_std_out(account_service: &AccountService) -> Result {
     let report = account_service.build_report()?;
     log::debug!("Successfully built reports for {} accounts", report.len());

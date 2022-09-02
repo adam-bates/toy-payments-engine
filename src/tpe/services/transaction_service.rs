@@ -20,6 +20,8 @@ pub enum TransactionServiceError {
     Unknown(String),
 }
 
+/// The Transaction service is responsible for processing transaction events as transactions to an
+/// account.
 pub struct TransactionService {
     account_service: AccountService,
 }

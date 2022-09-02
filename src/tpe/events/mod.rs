@@ -13,6 +13,7 @@ pub use withdrawal_event::WithdrawalEvent;
 /// Note: Deserializing TransactionEvent with serde would require using internal tags
 /// which do not work with csv: https://github.com/BurntSushi/rust-csv/issues/211
 
+/// Typed transaction event, forcing correct handling through the type-system
 #[derive(Debug)]
 pub enum TransactionEvent {
     Deposit(DepositEvent),

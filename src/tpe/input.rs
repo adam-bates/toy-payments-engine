@@ -7,6 +7,7 @@ use serde::Deserialize;
 
 use thiserror::Error;
 
+/// Represents an input event that a string would deserialize into
 #[derive(Deserialize, Debug)]
 pub struct InputEvent {
     #[serde(rename = "type")]
@@ -37,6 +38,7 @@ pub enum InputParseError {
 }
 
 impl InputEvent {
+    /// Parse an InputEvent as a TransactionEvent for use within the library
     pub fn parse(self) -> Result<TransactionEvent> {
         let event = match self.typ {
             InputEventType::Deposit => {

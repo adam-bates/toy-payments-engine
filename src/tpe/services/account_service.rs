@@ -24,6 +24,10 @@ pub enum AccountServiceError {
     InvalidWithdrawal(String),
 }
 
+/// The Account service is responsible for:
+/// - Gateway to datastore for accounts (currently just storing in memory hashmap)
+/// - Pocessing changes to an account, by updating snapshots
+/// - Building reports of current state using account snapshots
 pub struct AccountService {
     repository: AccountDataStore,
 }

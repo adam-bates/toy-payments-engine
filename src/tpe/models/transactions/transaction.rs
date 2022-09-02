@@ -5,6 +5,7 @@ use crate::money::Money;
 
 use std::ops::Deref;
 
+/// Creates a new ValidTransaction.
 pub fn new_transaction(
     id: TransactionId,
     transaction_type: TransactionType,
@@ -24,6 +25,17 @@ pub struct TransactionData {
     pub amount: Money,
 }
 
+/// Transaction is a finite state-machine with the following structure:
+///
+/// ValidTransaction
+/// -> dispute: DisputedTransaction
+///
+/// DisputedTransaction
+/// -> resolve: ValidTransaction
+/// -> charge_back: ChargedBackTransaction
+///
+/// ChargedBackTransaction
+/// -> _
 #[derive(Debug, Clone, PartialEq)]
 pub enum Transaction {
     Valid(ValidTransaction),

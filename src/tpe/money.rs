@@ -18,6 +18,9 @@ pub enum MoneyError {
     Parse(&'static str, String),
 }
 
+/// Money type stores money as 1/100 of a cent. This prevents issues with floating-point rounding.
+/// ie. Money(123456) represents a monetary value of 12.3456
+/// Note: Money is stored as an i64, so the inner value must fit within the bounds of an i64.
 #[derive(Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct Money(pub i64);
 

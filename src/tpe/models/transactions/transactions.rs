@@ -5,6 +5,9 @@ use crate::Result;
 
 use std::collections::HashMap;
 
+/// Represents a collection of transactions.
+/// Note: This is useful as we have constant-time lookup by TransactionId, and also stored
+/// chronological order.
 #[derive(Debug)]
 pub struct Transactions {
     map: HashMap<TransactionId, (usize, Transaction)>,

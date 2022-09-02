@@ -19,6 +19,7 @@ pub enum InputArgsError {
     FileNotFound(String),
 }
 
+/// Pases the input arguments, requiring the first and only argument to be a valid filepath
 pub fn parse_input_arg() -> Result<PathBuf> {
     let filename = env::args().skip(1).next()
         .ok_or_else(|| InputArgsError::Parse(format!("First argument must be the input file.")))?;
