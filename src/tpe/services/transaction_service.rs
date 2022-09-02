@@ -97,9 +97,7 @@ impl TransactionService {
         let transaction = account
             .transactions
             .replace(event.transaction_id, |transaction| match transaction {
-                Transaction::Valid(transaction) => {
-                    Ok(Transaction::Disputed(transaction.dispute()))
-                }
+                Transaction::Valid(transaction) => Ok(Transaction::Disputed(transaction.dispute())),
                 _ => Err(TransactionServiceError::InvalidEvent(format!(
                     "Dispute event on a non-valid transaction: {:?}",
                     transaction
@@ -124,8 +122,41 @@ impl TransactionService {
             Err(TransactionServiceError::Unknown(msg))?
         };
 
-        self.account_service
-            .process_dispute_transaction(&event.client_id, &transaction)?;
+        if let Err(e) = self
+            .account_service
+            .process_dispute_transaction(&event.client_id, &transaction)
+        {
+            log::debug!("Rolling back transaction change!");
+
+            let account = self
+                .account_service
+                .find_mut(&event.client_id)
+                .ok_or_else(|| {
+                    TransactionServiceError::InvalidEvent(format!(
+                        "Dispute event contains an invalid client_id: {}",
+                        event.client_id
+                    ))
+                })?;
+
+            log::debug!("Found account: {account:?}");
+
+            account
+                .transactions
+                .replace(event.transaction_id, |transaction| match transaction {
+                    Transaction::Disputed(transaction) => {
+                        Ok(Transaction::Valid(new_transaction(transaction.id, transaction.transaction_type.clone(), transaction.amount)))
+                    }
+                    _ => Ok(transaction),
+                })?
+                .ok_or_else(|| {
+                    TransactionServiceError::InvalidEvent(format!(
+                        "Dispute event contains an invalid transaction_id: {} for client {}",
+                        event.transaction_id, event.client_id,
+                    ))
+                })?;
+
+            Err(e)?
+        }
 
         Ok(())
     }
@@ -146,9 +177,7 @@ impl TransactionService {
         let transaction = account
             .transactions
             .replace(event.transaction_id, |transaction| match transaction {
-                Transaction::Disputed(transaction) => {
-                    Ok(Transaction::Valid(transaction.resolve()))
-                }
+                Transaction::Disputed(transaction) => Ok(Transaction::Valid(transaction.resolve())),
                 _ => Err(TransactionServiceError::InvalidEvent(format!(
                     "Resolve event on a non-disputed transaction: {:?}",
                     transaction
@@ -231,7 +260,8 @@ impl TransactionService {
 mod tests {
     use crate::{
         ids::{ClientId, TransactionId},
-        AccountReport, Money, services::AccountServiceError,
+        services::AccountServiceError,
+        AccountReport, Money,
     };
 
     use super::*;
@@ -600,7 +630,7 @@ mod tests {
         let e = res.err().unwrap();
         match e.downcast_ref::<TransactionServiceError>() {
             Some(e) => match e {
-                TransactionServiceError::InvalidEvent(_) => {},
+                TransactionServiceError::InvalidEvent(_) => {}
                 _ => panic!("Invalid: {e}"),
             },
             _ => panic!("Invalid: {e}"),
@@ -642,7 +672,7 @@ mod tests {
         let e = res.err().unwrap();
         match e.downcast_ref::<TransactionServiceError>() {
             Some(e) => match e {
-                TransactionServiceError::InvalidEvent(_) => {},
+                TransactionServiceError::InvalidEvent(_) => {}
                 _ => panic!("Invalid: {e}"),
             },
             _ => panic!("Invalid: {e}"),
@@ -685,7 +715,7 @@ mod tests {
         let e = res.err().unwrap();
         match e.downcast_ref::<AccountServiceError>() {
             Some(e) => match e {
-                AccountServiceError::InvalidWithdrawal(_) => {},
+                AccountServiceError::InvalidWithdrawal(_) => {}
                 _ => panic!("Invalid: {e}"),
             },
             _ => panic!("Invalid: {e}"),
@@ -733,8 +763,8 @@ mod tests {
         let e = res.err().unwrap();
         match e.downcast_ref::<TransactionServiceError>() {
             Some(e) => match e {
-                TransactionServiceError::InvalidEvent(_) => {},
-                _ => panic!("Invalid: {e}")
+                TransactionServiceError::InvalidEvent(_) => {}
+                _ => panic!("Invalid: {e}"),
             },
             _ => panic!("Invalid: {e}"),
         }
@@ -753,4 +783,3 @@ mod tests {
         );
     }
 }
-

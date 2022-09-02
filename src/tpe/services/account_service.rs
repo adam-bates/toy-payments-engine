@@ -22,6 +22,9 @@ pub enum AccountServiceError {
 
     #[error("Invalid withdrawal attempt: {0}")]
     InvalidWithdrawal(String),
+
+    #[error("Invalid dispute attempt: {0}")]
+    InvalidDispute(String),
 }
 
 /// The Account service is responsible for:
@@ -119,6 +122,15 @@ impl AccountService {
 
         match transaction.transaction_type {
             TransactionType::Deposit => {
+                // Note: Disputes on deposits only allowed if deposit amount is lte current
+                // availability. Disable this if-statement to allow potentially negative funds
+                // instead.
+                if account.snapshot.available.0 < transaction.amount.0 {
+                    Err(AccountServiceError::InvalidDispute(format!(
+                        "Cannot dispute transaction deposit of amount {} when available amount is only {}",
+                        transaction.amount, account.snapshot.available
+                    )))?
+                }
                 account.snapshot.available.sub(&transaction.amount)?;
                 account.snapshot.held.add(&transaction.amount)?;
             }
@@ -200,7 +212,11 @@ impl AccountService {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ids::TransactionId, models::{new_transaction, Snapshot}, Money};
+    use crate::{
+        ids::TransactionId,
+        models::{new_transaction, Snapshot},
+        Money,
+    };
 
     use super::*;
 
@@ -253,7 +269,7 @@ mod tests {
                 locked: false,
             }
         );
-        
+
         assert_eq!(
             account_service
                 .repository
@@ -284,10 +300,15 @@ mod tests {
 
         let transaction1 =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction1.clone())
+            .unwrap();
 
-        let transaction2 =
-            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
+        let transaction2 = new_transaction(
+            OTHER_TRANSACTION_ID,
+            TransactionType::Withdrawal,
+            SOME_AMOUNT,
+        );
 
         let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone());
         assert!(res.is_ok());
@@ -300,7 +321,10 @@ mod tests {
                 .unwrap()
                 .transactions
                 .get_all(),
-            vec![&Transaction::Valid(transaction1), &Transaction::Valid(transaction2)]
+            vec![
+                &Transaction::Valid(transaction1),
+                &Transaction::Valid(transaction2)
+            ]
         );
         assert_eq!(
             account_service
@@ -323,7 +347,9 @@ mod tests {
 
         let transaction =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction.clone()).unwrap();
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction.clone())
+            .unwrap();
 
         let transaction = transaction.dispute();
 
@@ -352,11 +378,18 @@ mod tests {
 
         let transaction1 =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1).unwrap();
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction1)
+            .unwrap();
 
-        let transaction2 =
-            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone()).unwrap();
+        let transaction2 = new_transaction(
+            OTHER_TRANSACTION_ID,
+            TransactionType::Withdrawal,
+            SOME_AMOUNT,
+        );
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction2.clone())
+            .unwrap();
 
         let transaction2 = transaction2.dispute();
 
@@ -385,10 +418,14 @@ mod tests {
 
         let transaction =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction.clone()).unwrap();
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction.clone())
+            .unwrap();
 
         let transaction = transaction.dispute();
-        account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction).unwrap();
+        account_service
+            .process_dispute_transaction(&SOME_CLIENT_ID, &transaction)
+            .unwrap();
 
         let transaction = transaction.resolve();
 
@@ -417,14 +454,23 @@ mod tests {
 
         let transaction1 =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1).unwrap();
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction1)
+            .unwrap();
 
-        let transaction2 =
-            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone()).unwrap();
+        let transaction2 = new_transaction(
+            OTHER_TRANSACTION_ID,
+            TransactionType::Withdrawal,
+            SOME_AMOUNT,
+        );
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction2.clone())
+            .unwrap();
 
         let transaction2 = transaction2.dispute();
-        account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction2).unwrap();
+        account_service
+            .process_dispute_transaction(&SOME_CLIENT_ID, &transaction2)
+            .unwrap();
 
         let transaction2 = transaction2.resolve();
 
@@ -453,10 +499,14 @@ mod tests {
 
         let transaction =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction.clone()).unwrap();
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction.clone())
+            .unwrap();
 
         let transaction = transaction.dispute();
-        account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction).unwrap();
+        account_service
+            .process_dispute_transaction(&SOME_CLIENT_ID, &transaction)
+            .unwrap();
 
         let transaction = transaction.charge_back();
 
@@ -485,14 +535,23 @@ mod tests {
 
         let transaction1 =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1).unwrap();
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction1)
+            .unwrap();
 
-        let transaction2 =
-            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone()).unwrap();
+        let transaction2 = new_transaction(
+            OTHER_TRANSACTION_ID,
+            TransactionType::Withdrawal,
+            SOME_AMOUNT,
+        );
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction2.clone())
+            .unwrap();
 
         let transaction2 = transaction2.dispute();
-        account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction2).unwrap();
+        account_service
+            .process_dispute_transaction(&SOME_CLIENT_ID, &transaction2)
+            .unwrap();
 
         let transaction2 = transaction2.charge_back();
 
@@ -521,13 +580,18 @@ mod tests {
 
         let transaction1 =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction1.clone())
+            .unwrap();
 
         let mut invalid_amount = SOME_AMOUNT;
         invalid_amount.add(&OTHER_AMOUNT).unwrap();
 
-        let transaction2 =
-            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Withdrawal, invalid_amount);
+        let transaction2 = new_transaction(
+            OTHER_TRANSACTION_ID,
+            TransactionType::Withdrawal,
+            invalid_amount,
+        );
 
         let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2);
         assert!(res.is_err());
@@ -573,7 +637,9 @@ mod tests {
 
         let transaction =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction.clone()).unwrap();
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction.clone())
+            .unwrap();
 
         let transaction = transaction.dispute();
 
@@ -642,15 +708,22 @@ mod tests {
 
         let transaction1 =
             new_transaction(SOME_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
-        account_service.process_valid_transaction(SOME_CLIENT_ID, transaction1.clone()).unwrap();
+        account_service
+            .process_valid_transaction(SOME_CLIENT_ID, transaction1.clone())
+            .unwrap();
 
         let transaction1 = transaction1.dispute();
-        account_service.process_dispute_transaction(&SOME_CLIENT_ID, &transaction1).unwrap();
+        account_service
+            .process_dispute_transaction(&SOME_CLIENT_ID, &transaction1)
+            .unwrap();
 
         let transaction1 = transaction1.charge_back();
-        account_service.process_charge_back_transaction(&SOME_CLIENT_ID, &transaction1).unwrap();
+        account_service
+            .process_charge_back_transaction(&SOME_CLIENT_ID, &transaction1)
+            .unwrap();
 
-        let transaction2 = new_transaction(OTHER_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
+        let transaction2 =
+            new_transaction(OTHER_TRANSACTION_ID, TransactionType::Deposit, SOME_AMOUNT);
 
         let res = account_service.process_valid_transaction(SOME_CLIENT_ID, transaction2.clone());
         assert!(res.is_err());
@@ -679,7 +752,6 @@ mod tests {
             },
             _ => panic!("Invalid: {e}"),
         }
-
 
         let resolved = transaction2.clone().resolve();
 

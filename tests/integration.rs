@@ -16,11 +16,16 @@ fn example_files() {
         let input_file = input_dir.join(format!("transactions_{idx}.csv"));
         let expected_file = expected_dir.join(format!("accounts_{idx}.csv"));
 
+        println!("Testing input: {input_file:?}");
+        println!("Expected: {expected_file:?}");
+
         // Running command directly to prove everything works as expected
         let output = Command::new("cargo")
             .args(["run", "--", input_file.to_str().unwrap()])
             .output()
             .unwrap();
+
+        println!("{}", String::from_utf8(output.stderr).unwrap());
 
         // Build actual from output
         let output = String::from_utf8(output.stdout).unwrap();
