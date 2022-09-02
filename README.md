@@ -6,32 +6,31 @@
 ###### Disclaimer: Please don't use this in production :)
 
 ## Usage 🚴
-The easiest way to see it in action is using one of the test-example files:
+The easiest way to see it in action is to use the root-level example file:
 ```
-cargo run -- ./resources/test-examples/inputs/transactions_1.csv
+cargo run -- transactions.csv
 ```
 
 This should give an output that looks something like:
 ```
-2022-09-02T20:21:23.857Z WARN [toy_payments_engine] Invalid transaction event: Dispute event contains an invalid transaction_id: 2 for client 1
-2022-09-02T20:21:23.857Z WARN [toy_payments_engine] Invalid withdrawal attempt: Cannot withdraw 2.0000 from client 1 when available amount is 1.0000
+2022-09-02T21:32:00.437Z WARN [toy_payments_engine] Invalid withdrawal attempt: Cannot withdraw 3.0000 from client 2 when available amount is 2.0000
 client,available,held,total,locked
+1,1.5000,0.0000,1.5000,false
 2,2.0000,0.0000,2.0000,false
-1,1.0000,0.0000,1.0000,false
 ```
 
 ### Writing to a file ✍️
 
 The logs are written to `stderr`, so we can direct our output into a file like so:
 ```
-cargo run -- ./resources/test-examples/inputs/transactions_1.csv > results.csv
+cargo run -- transactions.csv > accounts.csv
 ```
 
 And now you can open `./results.csv` to see:
 ```
 client,available,held,total,locked
+1,1.5000,0.0000,1.5000,false
 2,2.0000,0.0000,2.0000,false
-1,1.0000,0.0000,1.0000,false
 ```
 
 ### Testing 🧪
@@ -95,7 +94,7 @@ deposit,         1,     1,       1.0
 
 You can see in `main` that we have deserialized a single line of our CSV as a `TransactionEvent`, and are now processing it using the `TransactionService`.
 
-- Link to `main`: [src/main.rs:47](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L47)
+- Link to `main`: [src/main.rs:60](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L60)
 
 ---
 
@@ -144,7 +143,7 @@ After all processing is completed, we ask the `AccountService` to loop through e
 
 This is quite simple really.
 - Building the report can be found in the Account Service: [src/tpe/services/account_service.rs:43-72](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/services/account_service.rs#L43-L72)
-- Serializing the report can be found in main: [src/main.rs70-88](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L70-L88)
+- Serializing the report can be found in main: [src/main.rs83-101](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L83-L101)
 
 # And, well ... that's it! 😁
 
