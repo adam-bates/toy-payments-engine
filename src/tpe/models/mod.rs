@@ -7,7 +7,9 @@ pub use transactions::{
     Transaction,
     TransactionData,
     TransactionType,
-    TransactionState,
+    ValidTransaction,
+    DisputedTransaction,
+    ChargedBackTransaction,
     new_transaction,
 };
 pub use account::Account;

@@ -4,11 +4,11 @@ mod dispute_event;
 mod resolve_event;
 mod withdrawal_event;
 
-use charge_back_event::ChargeBackEvent;
-use deposit_event::DepositEvent;
-use dispute_event::DisputeEvent;
-use resolve_event::ResolveEvent;
-use withdrawal_event::WithdrawalEvent;
+pub use charge_back_event::ChargeBackEvent;
+pub use deposit_event::DepositEvent;
+pub use dispute_event::DisputeEvent;
+pub use resolve_event::ResolveEvent;
+pub use withdrawal_event::WithdrawalEvent;
 
 pub enum TransactionEvent {
     Deposit(DepositEvent),

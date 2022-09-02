@@ -1,17 +1,16 @@
-mod events;
-mod ids;
-mod models;
+pub mod events;
+pub mod ids;
+pub mod models;
 mod money;
-mod services;
 mod result;
+pub mod services;
 
-use money::Money;
-
+pub use money::Money;
 pub use result::Result;
 
-use std::fmt;
+pub fn build_transaction_service() -> services::TransactionService {
+    let account_service = services::AccountService::new();
+    let transaction_service = services::TransactionService::new(account_service);
 
-pub fn print_hello(name: impl fmt::Display) {
-    println!("Hello, {name}!");
+    return transaction_service;
 }
-
