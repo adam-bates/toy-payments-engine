@@ -34,7 +34,11 @@ impl Deref for Transaction {
     type Target = TransactionData;
 
     fn deref(&self) -> &Self::Target {
-        return &self;
+        return match self {
+            Self::Valid(transaction) => &transaction,
+            Self::Disputed(transaction) => &transaction,
+            Self::ChargedBack(transaction) => &transaction,
+        };
     }
 }
 

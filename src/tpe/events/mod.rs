@@ -10,6 +10,10 @@ pub use dispute_event::DisputeEvent;
 pub use resolve_event::ResolveEvent;
 pub use withdrawal_event::WithdrawalEvent;
 
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+#[serde(tag = "type")]
 pub enum TransactionEvent {
     Deposit(DepositEvent),
     Withdrawal(WithdrawalEvent),

@@ -2,6 +2,8 @@ use crate::Result;
 
 use thiserror::Error;
 
+use serde::Deserialize;
+
 #[derive(Error, Debug)]
 pub enum MoneyError {
     #[error("Overflow error while applying {0} operation on {1:?} and {2:?}")]
@@ -11,7 +13,7 @@ pub enum MoneyError {
     Underflow(&'static str, Money, Money),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Deserialize, Debug, Clone, Copy)]
 pub struct Money(pub i64);
 
 impl Money {
