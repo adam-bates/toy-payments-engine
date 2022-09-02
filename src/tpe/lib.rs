@@ -1,5 +1,6 @@
 pub mod events;
 pub mod ids;
+pub mod input;
 pub mod models;
 mod money;
 mod result;

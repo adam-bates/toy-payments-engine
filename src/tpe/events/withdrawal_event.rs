@@ -1,9 +1,7 @@
 use crate::ids::{ClientId, TransactionId};
 use crate::Money;
 
-use serde::Deserialize;
-
-#[derive(Deserialize)]
+#[derive(Debug)]
 pub struct WithdrawalEvent {
     pub client_id: ClientId,
     pub transaction_id: TransactionId,

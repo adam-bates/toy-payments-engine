@@ -11,6 +11,9 @@ pub enum MoneyError {
 
     #[error("Underflow error while applying {0} operation on {1:?} and {2:?}")]
     Underflow(&'static str, Money, Money),
+
+    #[error("Money parse error: {0}, {1}")]
+    Parse(&'static str, String),
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -19,6 +22,33 @@ pub struct Money(pub i64);
 impl Money {
     pub const MAX: Self = Self(std::i64::MAX);
     pub const MIN: Self = Self(std::i64::MIN);
+
+    pub fn parse(string: String) -> Result<Self> {
+        let str_to_split = string.clone();
+        let mut parts = str_to_split.split(".");
+
+        if parts.clone().count() > 2 {
+            Err(MoneyError::Parse("Too many decimal points", string))?
+        }
+
+        let dollars = match parts.next() {
+            None => return Ok(Money(0)),
+            Some(dollars) => dollars,
+        };
+
+        let cents = match parts.next() {
+            None => "0000".to_string(),
+            Some(cents) => format!("{:0<4}", cents)[..4].to_string(), 
+        };
+
+        dbg!(&dollars);
+        dbg!(&cents);
+
+        let dollars: i64 = dollars.parse()?;
+        let cents: i64 = cents.parse()?;
+
+        return Ok(Money((dollars * 10000) + cents));
+    }
 
     pub fn add(&mut self, other: &Self) -> Result {
         let a = self.0;

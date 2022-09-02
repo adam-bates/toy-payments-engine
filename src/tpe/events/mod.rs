@@ -10,10 +10,10 @@ pub use dispute_event::DisputeEvent;
 pub use resolve_event::ResolveEvent;
 pub use withdrawal_event::WithdrawalEvent;
 
-use serde::Deserialize;
+/// Note: Deserializing TransactionEvent with serde would require using internal tags
+/// which do not work with csv: https://github.com/BurntSushi/rust-csv/issues/211
 
-#[derive(Deserialize)]
-#[serde(tag = "type")]
+#[derive(Debug)]
 pub enum TransactionEvent {
     Deposit(DepositEvent),
     Withdrawal(WithdrawalEvent),
