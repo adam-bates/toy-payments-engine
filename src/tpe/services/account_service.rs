@@ -125,12 +125,18 @@ impl AccountService {
                 // Note: Disputes on deposits only allowed if deposit amount is lte current
                 // availability. Disable this if-statement to allow potentially negative funds
                 // instead.
+                //
+                // Note2: If a deposit is being disputed but the funds have already been withdrawn,
+                // that doesn't mean the deposit was valid. Disabling the if-statement probably
+                // makes the most sense.
+                /*
                 if account.snapshot.available.0 < transaction.amount.0 {
                     Err(AccountServiceError::InvalidDispute(format!(
                         "Cannot dispute transaction deposit of amount {} when available amount is only {}",
                         transaction.amount, account.snapshot.available
                     )))?
                 }
+                */
                 account.snapshot.available.sub(&transaction.amount)?;
                 account.snapshot.held.add(&transaction.amount)?;
             }
