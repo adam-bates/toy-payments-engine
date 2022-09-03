@@ -21,12 +21,12 @@ client,available,held,total,locked
 
 ### Writing to a file ✍️
 
-The logs are written to `stderr`, so we can direct our output into a file like so:
+Don't worry! The logs are written to `stderr`, so we easily can direct our output into a file like so:
 ```
 cargo run -- transactions.csv > accounts.csv
 ```
 
-And now you can open `./results.csv` to see:
+And now you can open `./accounts.csv` to see:
 ```
 client,available,held,total,locked
 1,1.5000,0.0000,1.5000,false
@@ -60,7 +60,7 @@ _Full explanation:_
 ### Part 1: Input 🔠
 The program expects to read a CSV file with the following structure.
 
-**CSV Headers:**
+**Rows:**
 | **Header** | **Type**                    | **Required** | **Example** |
 |------------|-----------------------------|--------------|-------------|
 | `type`     | TransactionType (see below) | `True`       | `deposit`   |
@@ -79,13 +79,18 @@ The program expects to read a CSV file with the following structure.
 
 **Money**:
 
-Money is stored as a Signed 64-bit Integer representing hundredths-of-cents value
-ie. `314.1592` is stored as `3141592`. This means the maximum value allowed is `922,337,203,685,477.5807`, and the minimum value allowed is `-922,337,203,685,477.5808`.
+Money is stored as a Signed 64-bit Integer representing hundredths-of-cents value.
 
-And example CSV file might look like:
+_ie. `314.1592` is stored as `3141592`. This means the maximum value allowed is `922,337,203,685,477.5807`, and the minimum value allowed is `-922,337,203,685,477.5808`._
+
+**Example File:**
+
+An example CSV file might look like:
 ```
 type,       client,    tx,    amount
-deposit,         1,     1,       1.0
+deposit,         1,     1,        10
+withdrawal,      1,     2,      7.25
+dispute,         1,     1,
 ```
 
 ## Part 2: Process ⚙️
