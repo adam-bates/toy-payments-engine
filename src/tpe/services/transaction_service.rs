@@ -143,9 +143,11 @@ impl TransactionService {
             account
                 .transactions
                 .replace(event.transaction_id, |transaction| match transaction {
-                    Transaction::Disputed(transaction) => {
-                        Ok(Transaction::Valid(new_transaction(transaction.id, transaction.transaction_type.clone(), transaction.amount)))
-                    }
+                    Transaction::Disputed(transaction) => Ok(Transaction::Valid(new_transaction(
+                        transaction.id,
+                        transaction.transaction_type.clone(),
+                        transaction.amount,
+                    ))),
                     _ => Ok(transaction),
                 })?
                 .ok_or_else(|| {

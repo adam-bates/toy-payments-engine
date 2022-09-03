@@ -1,4 +1,4 @@
-use crate::{Money, ids::TransactionId};
+use crate::{ids::TransactionId, Money};
 
 /// Represents an snapshot in time of an account's values, with the `from` field being the most recent transactionId to
 /// update the snapshot's values
@@ -20,4 +20,3 @@ impl Snapshot {
         }
     }
 }
-

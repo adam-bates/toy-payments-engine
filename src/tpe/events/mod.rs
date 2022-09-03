@@ -22,4 +22,3 @@ pub enum TransactionEvent {
     Resolve(ResolveEvent),
     ChargeBack(ChargeBackEvent),
 }
-

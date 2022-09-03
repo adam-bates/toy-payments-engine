@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Report representing overview of a single account
 /// Meant for easy serialization
@@ -10,5 +10,3 @@ pub struct AccountReport {
     pub total: String,
     pub locked: bool,
 }
-
-

@@ -1,17 +1,10 @@
-mod transactions;
 mod account;
 mod snapshot;
+mod transactions;
 
-pub use transactions::{
-    Transactions,
-    Transaction,
-    TransactionData,
-    TransactionType,
-    ValidTransaction,
-    DisputedTransaction,
-    ChargedBackTransaction,
-    new_transaction,
-};
 pub use account::Account;
 pub use snapshot::Snapshot;
-
+pub use transactions::{
+    new_transaction, ChargedBackTransaction, DisputedTransaction, Transaction, TransactionData,
+    TransactionType, Transactions, ValidTransaction,
+};

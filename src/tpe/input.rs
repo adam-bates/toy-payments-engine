@@ -1,7 +1,8 @@
-use crate::events::{TransactionEvent, DepositEvent, WithdrawalEvent, DisputeEvent, ResolveEvent, ChargeBackEvent};
-use crate::ids::{TransactionId, ClientId};
+use crate::ids::{ClientId, TransactionId};
 use crate::Money;
 use crate::Result;
+
+use crate::{Transaction, TransactionType};
 
 use serde::Deserialize;
 
@@ -25,7 +26,7 @@ pub enum InputEventType {
     Withdrawal,
     Dispute,
     Resolve,
-    Chargeback
+    Chargeback,
 }
 
 #[derive(Error, Debug)]
@@ -38,43 +39,50 @@ pub enum InputParseError {
 }
 
 impl InputEvent {
-    /// Parse an InputEvent as a TransactionEvent for use within the library
-    pub fn parse(self) -> Result<TransactionEvent> {
-        let event = match self.typ {
+    pub fn parse_transaction(self) -> Result<Transaction> {
+        let tx = match self.typ {
             InputEventType::Deposit => {
                 let amount = self.amount.ok_or(InputParseError::NoDepositAmount)?;
                 let amount = Money::parse(amount)?;
 
-                TransactionEvent::Deposit(DepositEvent {
-                    transaction_id: TransactionId(self.tx),
+                Transaction {
+                    id: TransactionId(self.tx),
                     client_id: ClientId(self.client),
-                    amount,
-                })
-            },
+                    tx_type: TransactionType::Deposit { amount },
+                    invalid: false,
+                }
+            }
             InputEventType::Withdrawal => {
-                let amount = self.amount.ok_or(InputParseError::NoWithdrawalAmount)?;
+                let amount = self.amount.ok_or(InputParseError::NoDepositAmount)?;
                 let amount = Money::parse(amount)?;
 
-                TransactionEvent::Withdrawal(WithdrawalEvent {
-                    transaction_id: TransactionId(self.tx),
+                Transaction {
+                    id: TransactionId(self.tx),
                     client_id: ClientId(self.client),
-                    amount,
-                })
+                    tx_type: TransactionType::Withdrawal { amount },
+                    invalid: false,
+                }
+            }
+            InputEventType::Dispute => Transaction {
+                id: TransactionId(self.tx),
+                client_id: ClientId(self.client),
+                tx_type: TransactionType::Dispute,
+                invalid: false,
             },
-            InputEventType::Dispute => TransactionEvent::Dispute(DisputeEvent {
-                transaction_id: TransactionId(self.tx),
+            InputEventType::Resolve => Transaction {
+                id: TransactionId(self.tx),
                 client_id: ClientId(self.client),
-            }),
-            InputEventType::Resolve => TransactionEvent::Resolve(ResolveEvent {
-                transaction_id: TransactionId(self.tx),
+                tx_type: TransactionType::Resolve,
+                invalid: false,
+            },
+            InputEventType::Chargeback => Transaction {
+                id: TransactionId(self.tx),
                 client_id: ClientId(self.client),
-            }),
-            InputEventType::Chargeback => TransactionEvent::ChargeBack(ChargeBackEvent {
-                transaction_id: TransactionId(self.tx),
-                client_id: ClientId(self.client),
-            }),
+                tx_type: TransactionType::ChargeBack,
+                invalid: false,
+            },
         };
 
-        Ok(event)
+        return Ok(tx);
     }
 }

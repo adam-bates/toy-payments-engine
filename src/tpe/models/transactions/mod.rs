@@ -1,15 +1,11 @@
 mod transaction;
 mod r#type;
 
-pub use transaction::{
-    Transaction,
-    TransactionData,
-    ValidTransaction,
-    DisputedTransaction,
-    ChargedBackTransaction,
-    new_transaction,
-};
 pub use r#type::TransactionType;
+pub use transaction::{
+    new_transaction, ChargedBackTransaction, DisputedTransaction, Transaction, TransactionData,
+    ValidTransaction,
+};
 
 use crate::ids::TransactionId;
 use crate::Result;
@@ -41,7 +37,11 @@ impl Transactions {
         let mut transactions = vec![];
 
         for tx_id in self.chron.iter() {
-            let (_, transaction) = self.map.get(tx_id).unwrap_or_else(|| panic!("Invalid program state: self.chron contains [{tx_id}], but self.map does not."));
+            let (_, transaction) = self.map.get(tx_id).unwrap_or_else(|| {
+                panic!(
+                    "Invalid program state: self.chron contains [{tx_id}], but self.map does not."
+                )
+            });
 
             transactions.push(transaction);
         }

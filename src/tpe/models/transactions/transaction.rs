@@ -97,4 +97,3 @@ impl Deref for ChargedBackTransaction {
         &self.0
     }
 }
-

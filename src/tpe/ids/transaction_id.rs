@@ -23,5 +23,3 @@ mod tests {
         assert_eq!(TransactionId(std::u32::MAX).to_string(), "4294967295");
     }
 }
-
-

@@ -7,4 +7,3 @@ pub struct WithdrawalEvent {
     pub transaction_id: TransactionId,
     pub amount: Money,
 }
-

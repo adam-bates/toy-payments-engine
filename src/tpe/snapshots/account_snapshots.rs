@@ -1,0 +1,34 @@
+use super::AccountSnapshot;
+
+use crate::ids::ClientId;
+use crate::AccountReport;
+use crate::Result;
+
+use std::collections::HashMap;
+
+#[derive(Debug, Default)]
+pub struct AccountSnapshots {
+    map: HashMap<ClientId, AccountSnapshot>,
+}
+
+impl AccountSnapshots {
+    pub fn new() -> Self {
+        return Self::default();
+    }
+
+    pub fn find_mut_or_create(&mut self, client_id: ClientId) -> &mut AccountSnapshot {
+        if !self.map.contains_key(&client_id) {
+            self.map.insert(client_id, AccountSnapshot::new(client_id));
+        }
+
+        return self.map.get_mut(&client_id).unwrap();
+    }
+
+    pub fn build_report(&self) -> Result<Vec<AccountReport>> {
+        return self
+            .map
+            .values()
+            .map(|snapshot| snapshot.parse_report())
+            .collect::<Result<Vec<AccountReport>>>();
+    }
+}

@@ -38,7 +38,7 @@ fn example_files() {
 
         for record in output_reader.deserialize() {
             actual.push(record.unwrap());
-        } 
+        }
 
         // Build expected from expected_file
         let mut expected_reader = ReaderBuilder::new()
@@ -59,4 +59,3 @@ fn example_files() {
         assert_eq!(actual, expected);
     }
 }
-

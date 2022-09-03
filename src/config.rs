@@ -13,4 +13,3 @@ pub fn configure_app() -> Result {
 
     Ok(())
 }
-

@@ -5,4 +5,3 @@ pub struct DisputeEvent {
     pub client_id: ClientId,
     pub transaction_id: TransactionId,
 }
-

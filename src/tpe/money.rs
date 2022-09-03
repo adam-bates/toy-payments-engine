@@ -43,7 +43,7 @@ impl Money {
 
         let cents = match parts.next() {
             None => "0000".to_string(),
-            Some(cents) => format!("{:0<4}", cents)[..4].to_string(), 
+            Some(cents) => format!("{:0<4}", cents)[..4].to_string(),
         };
 
         let dollars: i64 = dollars.parse()?;
@@ -100,17 +100,32 @@ mod tests {
         assert_eq!(Money::parse("0.".to_string()).unwrap(), Money(0));
         assert_eq!(Money::parse("0.0".to_string()).unwrap(), Money(0));
         assert_eq!(Money::parse("1.0".to_string()).unwrap(), Money(10000));
-        assert_eq!(Money::parse("123456".to_string()).unwrap(), Money(1234560000));
-        assert_eq!(Money::parse("123456.001".to_string()).unwrap(), Money(1234560010));
+        assert_eq!(
+            Money::parse("123456".to_string()).unwrap(),
+            Money(1234560000)
+        );
+        assert_eq!(
+            Money::parse("123456.001".to_string()).unwrap(),
+            Money(1234560010)
+        );
         assert_eq!(Money::parse("0.1234".to_string()).unwrap(), Money(1234));
-        assert_eq!(Money::parse("1234.5678".to_string()).unwrap(), Money(12345678));
-        assert_eq!(Money::parse("922337203685477.5807".to_string()).unwrap(), Money(std::i64::MAX));
+        assert_eq!(
+            Money::parse("1234.5678".to_string()).unwrap(),
+            Money(12345678)
+        );
+        assert_eq!(
+            Money::parse("922337203685477.5807".to_string()).unwrap(),
+            Money(std::i64::MAX)
+        );
     }
 
     #[test]
     fn parse_only_reads_4_digits() {
         assert_eq!(Money::parse("0.123456".to_string()).unwrap(), Money(1234));
-        assert_eq!(Money::parse("9000.00001".to_string()).unwrap(), Money(90000000));
+        assert_eq!(
+            Money::parse("9000.00001".to_string()).unwrap(),
+            Money(90000000)
+        );
     }
 
     #[test]
@@ -190,4 +205,3 @@ mod tests {
         assert!(a.sub(&b).is_err());
     }
 }
-
