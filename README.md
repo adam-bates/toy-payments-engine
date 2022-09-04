@@ -44,23 +44,48 @@ cargo test
 
 _TL;DR:_
 ```
-1. Stream CSV lines
-  a. Deserialize to TransactionEvents
-  b. Process event as Transaction
-  c. Process Transaction against Account
+1. Stream CSV rows
+  a. Deserialize row to Transaction
+  b. Append Transaction to Ledger
+  c. Apply Ledger changes to Accounts
 
-2. Build report of accounts
+2. Build report of Accounts
   a. Write as CSV to stdout
 ```
 
 ---
 
-_Full explanation:_
+## Part 0: Assuptions
 
-### Part 1: Input 🔠
+When processing transactions, it's not always clear if a transaction is valid, or how it should affect an account. I've made the following assuptions, which heavily affect the outcome of the program:
+
+### 1. Transaction IDs are globally unique.
+_The following is considered invalid:_
+```
+- Client 1, Transaction 1, Deposit 50
+- Client 2, Transaction 1, Deposit 50
+```
+
+### 2. Withdrawals cannot be disputed.
+_I was on the fence about this one for a while, but decided it doesn't make sense to "charge back" a withdrawal._
+
+### 3. Amount values cannot be input as negative.
+_It doesn't make sense to deposit or withdrawal a negative value. Output amounts can still be negative._
+
+### 4. Amount values must be within the following bounds (inclusive):
+- Min: `-922,337,203,685,477.5808`
+- Max: `922,337,203,685,477.5807`
+
+_The numbers are explained below. But since this is a toy project, there's no need to waste memory by supporting higher numbers._
+
+### 5. Bad transactions won't panic the application.
+
+_Whether its a deserialize issue, an overflow, or an invalid action due to business logic, the application will mark the transaction as invalid and move on to the next one._
+
+## Part 1: Input 🔠
 The program expects to read a CSV file with the following structure.
 
-**Rows:**
+### Row:
 | **Header** | **Type**                    | **Required** | **Example** |
 |------------|-----------------------------|--------------|-------------|
 | `type`     | TransactionType (see below) | `True`       | `deposit`   |
@@ -68,7 +93,7 @@ The program expects to read a CSV file with the following structure.
 | `tx`       | Unsigned 32-bit Integer     | `True`       | `456`       |
 | `amount`   | Money (see below)           | `False`      | `314.1592`  |
 
-**TransactionType:**
+### TransactionType:
 | **TransactionType**  | **Description**                                                           |
 |----------------------|---------------------------------------------------------------------------|
 | `deposit`            | Deposit amount to account                                                 |
@@ -77,13 +102,13 @@ The program expects to read a CSV file with the following structure.
 | `resolve`            | Undo a transaction's dispute, moving amount in question out of held funds |
 | `chargeback`         | Close a dispute and lock the account                                      |
 
-**Money**:
+### Money:
 
 Money is stored as a Signed 64-bit Integer representing hundredths-of-cents value.
 
 _ie. `314.1592` is stored as `3141592`. This means the maximum value allowed is `922,337,203,685,477.5807`, and the minimum value allowed is `-922,337,203,685,477.5808`._
 
-**Example File:**
+### Example File:
 
 An example CSV file might look like:
 ```
@@ -93,61 +118,28 @@ withdrawal,      1,     2,      7.25
 dispute,         1,     1,
 ```
 
-## Part 2: Process ⚙️
+Each line of the CSV is deserialized to an InputEvent.
 
-#### Main
+An InputEvent is parsed as a Transaction.
 
-You can see in `main` that we have deserialized a single line of our CSV as a `TransactionEvent`, and are now processing it using the `TransactionService`.
+## Part 2: Append to Ledger 🧾
 
-- Link to `main`: [src/main.rs:60](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L60)
+Transactions are appended to our ledger, following WORM (Write Once, Read Many).
 
----
+## Part 3: Apply changes to Accounts ⚙️
 
-#### Transaction Service
+We grab the AccountSnapshot for whichever client the transaction is for.
 
-This is a nice setup because it doesn't matter how we stream our data in, as long as we can iterate over some events, we can process them!
+Then we apply new transactions to our snapshot, using our updated ledger.
 
-The `TransactionService` is responsible for taking in a `TransactionEvent`, building/updating a `Transaction`, and calling the `AccountService`.
+## Part 4: Report 📈
 
-- Link to `TransactionService`: [src/tpe/services/transaction_service.rs:34](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/services/transaction_service.rs#L34)
-
----
-
-#### Transaction
-
-A `Transaction` is a finite state-machine representation of a transaction:
-```
-ValidTransaction
-  -> dispute() = DisputedTransaction
-
-DisputedTransaction
-  -> resolve() = ValidTransaction
-  -> charge_back() = ChargedBackTransaction
-
-ChargedBackTransaction
-  -> _
-```
-
-- Link to `Transaction`: [src/tpe/models/transactions/transaction.rs:40](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/models/transactions/transaction.rs#L40)
-
----
-
-#### AccountService
-
-The `AccountService` is responsible for 3 things:
-
-1. Interfacing with data store for accounts
-2. Applying transactions to account snapshots (ie. updating funds)
-3. Building overview report of all accounts
-
-- Link to `AccountService`: [src/tpe/services/account_service.rs:35](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/services/account_service.rs#L35)
-
-## Part 3: Report 📈
-
-After all processing is completed, we ask the `AccountService` to loop through every `Account`, and build a report using the latest state-snapshots.
+After all processing is completed, we loop through every `AccountSnapshot`, and build a report.
 
 This is quite simple really.
+
 - Building the report can be found in the Account Service: [src/tpe/services/account_service.rs:43-72](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/services/account_service.rs#L43-L72)
+
 - Serializing the report can be found in main: [src/main.rs83-101](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L83-L101)
 
 # And, well ... that's it! 😁

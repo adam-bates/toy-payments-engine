@@ -23,4 +23,3 @@ mod tests {
         assert_eq!(ClientId(std::u16::MAX).to_string(), "65535");
     }
 }
-
