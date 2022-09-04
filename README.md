@@ -84,18 +84,16 @@ _The following is considered invalid:_
 ```
 
 ### 2. Withdrawals cannot be disputed.
-_I was on the fence about this one for a while, but decided it doesn't make sense to "charge back" a withdrawal._
+_Tt doesn't make sense to charge-back a withdrawal._
 
-### 3. Amount values cannot be input as negative.
-_It doesn't make sense to deposit or withdrawal a negative value. Output amounts can still be negative._
+### 3. Input amounts cannot be negative.
+_It doesn't make sense to deposit or withdrawal a negative value._
 
-### 4. Amount values must be within the following bounds (inclusive):
-- Min: `-922,337,203,685,477.5808`
-- Max: `922,337,203,685,477.5807`
+### 4. Maximum amount supported is: `922,337,203,685,477.5807`
 
-_The numbers are explained below. But since this is a toy project, there's no need to waste memory by supporting higher numbers._
+_This number is explained below, but since this is a toy project, there's no need to waste memory by supporting more._
 
-### 5. Bad transactions won't panic the application.
+### 5. Bad transactions won't kill the application.
 
 _Whether its a deserialize issue, an overflow, or an invalid action due to business logic, the application will mark the transaction as invalid and move on to the next one._
 
