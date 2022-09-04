@@ -243,9 +243,10 @@ impl AccountSnapshot {
                 self.available = available;
                 self.held = held;
             }
-            _ => Err(AccountTransactionError::InvalidLedgerState(
-                "Cannot find deposit to resolve".to_string(),
-            ))?,
+            _ => Err(AccountTransactionError::InvalidLedgerState(format!(
+                "Cannot find deposit to resolve for transaction ID: {}",
+                tx.id,
+            )))?,
         }
 
         Ok(())
@@ -270,7 +271,7 @@ impl AccountSnapshot {
             )?,
 
             _ => Err(AccountTransactionError::InvalidChargeBack(format!(
-                "Cannot resolve a transaction of type: {:?}",
+                "Cannot charge back a transaction of type: {:?}",
                 prev.tx_type
             )))?,
         };
