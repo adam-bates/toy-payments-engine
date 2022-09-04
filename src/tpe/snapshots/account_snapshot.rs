@@ -62,8 +62,14 @@ impl AccountSnapshot {
 
         let ledger_idicies = ledger.find_indicies_for_client_id(self.client_id, from_idx);
 
+        log::debug!("find_indicies_for_client_id({}, {from_idx}) = {ledger_idicies:?}", self.client_id);
+
         for ledger_idx in ledger_idicies {
-            if let Err(e) = self.apply_transaction(ledger, &ledger_idx) {
+            let res = self.apply_transaction(ledger, &ledger_idx);
+
+            self.from_ledger_idx = Some(ledger_idx);
+
+            if let Err(e) = res {
                 ledger.invalidate(&ledger_idx);
                 return Err(e);
             }
@@ -297,8 +303,6 @@ impl AccountSnapshot {
                 }
             }
         }
-
-        self.from_ledger_idx = Some(*ledger_idx);
 
         Ok(())
     }
@@ -596,7 +600,7 @@ mod tests {
             snapshot,
             AccountSnapshot {
                 client_id: SOME_CLIENT_ID,
-                from_ledger_idx: Some(0),
+                from_ledger_idx: Some(1),
                 available: SOME_AMOUNT,
                 held: Money(0),
                 locked: false,
@@ -642,7 +646,7 @@ mod tests {
             snapshot,
             AccountSnapshot {
                 client_id: SOME_CLIENT_ID,
-                from_ledger_idx: Some(1),
+                from_ledger_idx: Some(2),
                 available: Money(0),
                 held: Money(0),
                 locked: false,
@@ -698,7 +702,7 @@ mod tests {
             snapshot2,
             AccountSnapshot {
                 client_id: OTHER_CLIENT_ID,
-                from_ledger_idx: None,
+                from_ledger_idx: Some(1),
                 available: Money(0),
                 held: Money(0),
                 locked: false,
@@ -751,7 +755,7 @@ mod tests {
             snapshot,
             AccountSnapshot {
                 client_id: SOME_CLIENT_ID,
-                from_ledger_idx: Some(2),
+                from_ledger_idx: Some(3),
                 available: Money(0),
                 held: Money(0),
                 locked: true,
