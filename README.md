@@ -5,6 +5,21 @@
 
 ###### Disclaimer: Please don't use this in production :)
 
+
+## Contents
+
+- [Usage](#usage-)
+    * [Running](#usage-)
+    * [Writing to a file](#writing-to-a-file-%EF%B8%8F)
+    * [Testing](#testing-)
+- [Under the hood](#oh-but-great-wise-adam-how-does-it-all-actually-work)
+    * [Part 0: Assuptions](#part-0-assuptions)
+    * [Part 1: Input](#part-1-input-)
+    * [Part 2: Append to Ledger](#part-2-append-to-ledger-)
+    * [Part 3: Apply changes to Accounts](#part-3-apply-changes-to-accounts-%EF%B8%8F)
+    * [Part 4: Report](#part-4-report-)
+
+
 ## Usage 🚴
 The easiest way to see it in action is to use the root-level example file:
 ```
@@ -39,6 +54,8 @@ Running the test suite is as simple as:
 cargo test
 ```
 
+---
+I know what you must be asking yourself ...
 # Oh, but great wise Adam, how does it all actually work?
 ###### Is that too cheesy of a title? Lol.
 
@@ -118,13 +135,25 @@ withdrawal,      1,     2,      7.25
 dispute,         1,     1,
 ```
 
+---
+
 Each line of the CSV is deserialized to an InputEvent.
 
-An InputEvent is parsed as a Transaction.
+Each InputEvent is parsed as a Transaction.
+
+- Link to deserialization and parsing calls: [src/main.rs:36-52](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L36-L52)
+
+- Link to InputEvent: [src/tpe/input.rs:13](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/input.rs#L13)
+
+- Link to Transaction: [src/tpe/transaction.rs:6](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/transaction.rs#L6)
 
 ## Part 2: Append to Ledger 🧾
 
 Transactions are appended to our ledger, following WORM (Write Once, Read Many).
+
+- Link to append call: [src/main.rs:56-59](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L56-L59)
+
+- Link to Ledger: [src/tpe/ledger.rs:8](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/ledger.rs#L8)
 
 ## Part 3: Apply changes to Accounts ⚙️
 
@@ -132,15 +161,17 @@ We grab the AccountSnapshot for whichever client the transaction is for.
 
 Then we apply new transactions to our snapshot, using our updated ledger.
 
+- Link to apply call: [src/main.rs:63-66](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L63-L66)
+
+- Link to apply logic: [src/tpe/snapshots/account_snapshot.rs:85](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/snapshots/account_snapshot.rs#L85)
+
 ## Part 4: Report 📈
 
 After all processing is completed, we loop through every `AccountSnapshot`, and build a report.
 
-This is quite simple really.
+- Building the report: [src/tpe/snapshots/account_snapshots.rs:26](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/snapshots/account_snapshots.rs#L26)
 
-- Building the report can be found in the Account Service: [src/tpe/services/account_service.rs:43-72](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/services/account_service.rs#L43-L72)
-
-- Serializing the report can be found in main: [src/main.rs83-101](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L83-L101)
+- Serializing the report: [src/main.rs:82](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L82)
 
 # And, well ... that's it! 😁
 
