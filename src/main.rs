@@ -61,7 +61,7 @@ fn process_data(ledger: &mut Ledger, snapshots: &mut AccountSnapshots) -> Result
         let snapshot = snapshots.find_mut_or_create(client_id);
 
         log::debug!("Applying tx {ledger_idx} to snapshot: {snapshot:?}");
-        if let Err(e) = snapshot.apply_transaction(ledger, &ledger_idx) {
+        if let Err(e) = snapshot.apply_transactions(ledger) {
             log::warn!("{e}");
         }
     }

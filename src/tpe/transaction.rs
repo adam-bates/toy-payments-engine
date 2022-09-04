@@ -1,7 +1,7 @@
 use crate::ids::{ClientId, TransactionId};
 use crate::Money;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
     pub id: TransactionId,
     pub client_id: ClientId,
