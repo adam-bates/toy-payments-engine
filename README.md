@@ -84,7 +84,7 @@ _The following is considered invalid:_
 ```
 
 ### 2. Withdrawals cannot be disputed.
-_Tt doesn't make sense to charge-back a withdrawal._
+_Withdrawals are only valid if the client had enough available to withdrawal. Money comes in through deposits, so any disputes against a client having money they shouldn't, should be against the deposits._
 
 ### 3. Input amounts cannot be negative.
 _It doesn't make sense to deposit or withdrawal a negative value._
