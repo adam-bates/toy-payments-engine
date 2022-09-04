@@ -63,7 +63,10 @@ impl InputEvent {
                 }
             }
             InputEventType::Withdrawal => {
-                let amount = self.amount.clone().ok_or_else(|| InputParseError::NoWithdrawalAmount(self.clone()))?;
+                let amount = self
+                    .amount
+                    .clone()
+                    .ok_or_else(|| InputParseError::NoWithdrawalAmount(self.clone()))?;
                 let amount = Money::parse(amount)?;
 
                 if amount.0 < 0 {

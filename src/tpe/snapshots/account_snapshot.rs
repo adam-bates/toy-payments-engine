@@ -242,7 +242,9 @@ impl AccountSnapshot {
                                 self.available = available;
                                 self.held = held;
                             }
-                            _ => Err(AccountTransactionError::InvalidLedgerState("Cannot find deposit to resolve".to_string()))?,
+                            _ => Err(AccountTransactionError::InvalidLedgerState(
+                                "Cannot find deposit to resolve".to_string(),
+                            ))?,
                         }
                     }
                     _ => Err(AccountTransactionError::InvalidResolve(format!(
@@ -293,7 +295,9 @@ impl AccountSnapshot {
                                 self.held.sub(&amount)?;
                                 self.locked = true;
                             }
-                            _ => Err(AccountTransactionError::InvalidLedgerState("Cannot find deposit to charge back".to_string()))?,
+                            _ => Err(AccountTransactionError::InvalidLedgerState(
+                                "Cannot find deposit to charge back".to_string(),
+                            ))?,
                         }
                     }
                     _ => Err(AccountTransactionError::InvalidChargeBack(format!(

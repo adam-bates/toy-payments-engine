@@ -18,7 +18,9 @@ impl AccountSnapshots {
     }
 
     pub fn find_mut_or_create(&mut self, client_id: ClientId) -> &mut AccountSnapshot {
-        self.map.entry(client_id).or_insert_with(|| AccountSnapshot::new(client_id));
+        self.map
+            .entry(client_id)
+            .or_insert_with(|| AccountSnapshot::new(client_id));
 
         return self.map.get_mut(&client_id).unwrap();
     }

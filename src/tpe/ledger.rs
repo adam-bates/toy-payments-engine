@@ -181,11 +181,7 @@ mod tests {
 
         assert_eq!(
             ledger.history,
-            vec![
-                transaction1,
-                transaction2,
-                transaction3
-            ]
+            vec![transaction1, transaction2, transaction3]
         );
         assert_eq!(
             ledger.lookup_map,
