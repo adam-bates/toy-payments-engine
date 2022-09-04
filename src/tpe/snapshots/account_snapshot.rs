@@ -1,7 +1,7 @@
 use crate::ids::{ClientId, TransactionId};
-use crate::Money;
 use crate::Result;
 use crate::{AccountReport, Ledger, TransactionType};
+use crate::{Money, Transaction};
 
 use thiserror::Error;
 
@@ -58,13 +58,31 @@ impl AccountSnapshot {
         }
     }
 
-    pub fn apply_transactions(&mut self, ledger: &mut Ledger) -> Result {
-        let from_idx = self.from_ledger_idx.map(|idx| idx + 1).unwrap_or(0);
+    pub fn parse_report(&self) -> Result<AccountReport> {
+        let mut total = self.available;
+        total.add(&self.held)?;
 
-        let ledger_idicies = ledger.find_indicies_for_client_id(self.client_id, from_idx);
+        Ok(AccountReport {
+            client: self.client_id.to_string(),
+            available: self.available.to_string(),
+            held: self.held.to_string(),
+            total: total.to_string(),
+            locked: self.locked,
+        })
+    }
+
+    /// Attempts to apply any new transactions that have been added to the ledger since the last
+    /// time this was run.
+    ///
+    /// Any failed attempts will return an error, but the snapshot will remember where it failed,
+    /// and move on to the next transaction if this function is run again.
+    pub fn apply_transactions(&mut self, ledger: &mut Ledger) -> Result {
+        let min_idx_unseen = self.from_ledger_idx.map(|idx| idx + 1).unwrap_or(0);
+
+        let ledger_idicies = ledger.get_valid_indicies_for_client(self.client_id, min_idx_unseen);
 
         log::debug!(
-            "find_indicies_for_client_id({}, {from_idx}) = {ledger_idicies:?}",
+            "get_valid_indicies_for_client({}, {min_idx_unseen}) = {ledger_idicies:?}",
             self.client_id
         );
 
@@ -96,14 +114,7 @@ impl AccountSnapshot {
             ))?;
         }
 
-        let mut transactions = ledger
-            .get_valid_transactions_until(ledger_idx, &tx.id)
-            .ok_or_else(|| {
-                AccountTransactionError::TransactionNotFound(format!(
-                    "No transactions found in ledger for transaction ID: {}",
-                    tx.id
-                ))
-            })?;
+        let mut transactions = ledger.get_valid_transactions_until(ledger_idx, &tx.id);
 
         let tx = transactions.pop().ok_or_else(|| {
             AccountTransactionError::TransactionNotFound(format!(
@@ -114,214 +125,221 @@ impl AccountSnapshot {
 
         match tx.tx_type {
             TransactionType::Deposit { amount } => {
-                if transactions.len() > 1 {
-                    Err(AccountTransactionError::InvalidDeposit(format!(
-                        "Duplicate transaction ID found: {}",
-                        tx.id
-                    )))?;
-                }
-
-                self.available.add(&amount)?;
+                self.apply_deposit(&mut transactions, tx, amount)?
             }
-
             TransactionType::Withdrawal { amount } => {
-                if transactions.len() > 1 {
-                    Err(AccountTransactionError::InvalidWithdrawal(format!(
-                        "Duplicate transaction ID found: {}",
-                        tx.id
-                    )))?;
-                }
-
-                if self.available.0 < amount.0 {
-                    Err(AccountTransactionError::InvalidWithdrawal(format!(
-                        "Cannot withdraw {} from client {} when available amount is {}",
-                        amount, tx.client_id, self.available
-                    )))?
-                }
-
-                self.available.sub(&amount)?;
+                self.apply_withdrawal(&mut transactions, tx, amount)?
             }
 
-            TransactionType::Dispute => {
-                let mut prev = transactions.pop().ok_or_else(|| {
-                    AccountTransactionError::InvalidDispute(format!(
-                        "No previous transaction found with ID: {}",
-                        tx.id
-                    ))
-                })?;
-
-                if prev.client_id != self.client_id {
-                    Err(AccountTransactionError::InvalidClientId(
-                        prev.id,
-                        prev.client_id,
-                        self.client_id,
-                    ))?;
-                }
-
-                while prev.tx_type == TransactionType::Resolve {
-                    transactions.pop(); // dispute
-
-                    // either a resolve, or the transaction being disputed
-                    prev = transactions.pop().ok_or_else(|| {
-                        AccountTransactionError::InvalidLedgerState(format!(
-                            "No previous transaction found with ID: {}",
-                            tx.id
-                        ))
-                    })?;
-                }
-
-                match prev.tx_type {
-                    TransactionType::Deposit { amount } => {
-                        let mut available = self.available;
-                        let mut held = self.held;
-
-                        available.sub(&amount)?;
-                        held.add(&amount)?;
-
-                        // Only apply if both operations were successful
-                        self.available = available;
-                        self.held = held;
-                    }
-
-                    // Not sure if possible to dispute withdrawals.
-                    // Assuming that you cannot, based on the term "ChargeBack"
-
-                    // TransactionType::Withdrawal { amount } => { .. },
-                    _ => Err(AccountTransactionError::InvalidDispute(format!(
-                        "Cannot dispute a transaction of type: {:?}",
-                        prev.tx_type
-                    )))?,
-                }
-            }
-
-            TransactionType::Resolve => {
-                let prev = transactions.pop().ok_or_else(|| {
-                    AccountTransactionError::InvalidResolve(format!(
-                        "No previous transaction found with ID: {}",
-                        tx.id
-                    ))
-                })?;
-
-                if prev.client_id != self.client_id {
-                    Err(AccountTransactionError::InvalidClientId(
-                        prev.id,
-                        prev.client_id,
-                        self.client_id,
-                    ))?;
-                }
-
-                match prev.tx_type {
-                    TransactionType::Dispute => {
-                        let mut prev = transactions.pop().ok_or_else(|| {
-                            AccountTransactionError::InvalidResolve(format!(
-                                "No previous transaction found with ID: {}",
-                                tx.id
-                            ))
-                        })?;
-
-                        while prev.tx_type == TransactionType::Resolve {
-                            transactions.pop();
-
-                            prev = transactions.pop().ok_or_else(|| {
-                                AccountTransactionError::InvalidLedgerState(format!(
-                                    "No previous transaction found with ID: {}",
-                                    tx.id
-                                ))
-                            })?;
-                        }
-
-                        match prev.tx_type {
-                            TransactionType::Deposit { amount } => {
-                                let mut available = self.available;
-                                let mut held = self.held;
-
-                                held.sub(&amount)?;
-                                available.add(&amount)?;
-
-                                // Only apply if both operations were successful
-                                self.available = available;
-                                self.held = held;
-                            }
-                            _ => Err(AccountTransactionError::InvalidLedgerState(
-                                "Cannot find deposit to resolve".to_string(),
-                            ))?,
-                        }
-                    }
-                    _ => Err(AccountTransactionError::InvalidResolve(format!(
-                        "Cannot resolve a transaction of type: {:?}",
-                        prev.tx_type
-                    )))?,
-                }
-            }
-
-            TransactionType::ChargeBack => {
-                let prev = transactions.pop().ok_or_else(|| {
-                    AccountTransactionError::InvalidChargeBack(format!(
-                        "No previous transaction found with ID: {}",
-                        tx.id
-                    ))
-                })?;
-
-                if prev.client_id != self.client_id {
-                    Err(AccountTransactionError::InvalidClientId(
-                        prev.id,
-                        prev.client_id,
-                        self.client_id,
-                    ))?;
-                }
-
-                match prev.tx_type {
-                    TransactionType::Dispute => {
-                        let mut prev = transactions.pop().ok_or_else(|| {
-                            AccountTransactionError::InvalidChargeBack(format!(
-                                "No previous transaction found with ID: {}",
-                                tx.id
-                            ))
-                        })?;
-
-                        while prev.tx_type == TransactionType::Resolve {
-                            transactions.pop();
-
-                            prev = transactions.pop().ok_or_else(|| {
-                                AccountTransactionError::InvalidLedgerState(format!(
-                                    "No previous transaction found with ID: {}",
-                                    tx.id
-                                ))
-                            })?;
-                        }
-
-                        match prev.tx_type {
-                            TransactionType::Deposit { amount } => {
-                                self.held.sub(&amount)?;
-                                self.locked = true;
-                            }
-                            _ => Err(AccountTransactionError::InvalidLedgerState(
-                                "Cannot find deposit to charge back".to_string(),
-                            ))?,
-                        }
-                    }
-                    _ => Err(AccountTransactionError::InvalidChargeBack(format!(
-                        "Cannot resolve a transaction of type: {:?}",
-                        prev.tx_type
-                    )))?,
-                }
-            }
+            TransactionType::Dispute => self.apply_dispute(&mut transactions, tx)?,
+            TransactionType::Resolve => self.apply_resolve(&mut transactions, tx)?,
+            TransactionType::ChargeBack => self.apply_charge_back(&mut transactions, tx)?,
         }
 
         Ok(())
     }
 
-    pub fn parse_report(&self) -> Result<AccountReport> {
-        let mut total = self.available;
-        total.add(&self.held)?;
+    fn apply_deposit(
+        &mut self,
+        transactions: &mut Vec<&Transaction>,
+        tx: &Transaction,
+        amount: Money,
+    ) -> Result {
+        if transactions.len() > 1 {
+            Err(AccountTransactionError::InvalidDeposit(format!(
+                "Duplicate transaction ID found: {}",
+                tx.id
+            )))?;
+        }
 
-        Ok(AccountReport {
-            client: self.client_id.to_string(),
-            available: self.available.to_string(),
-            held: self.held.to_string(),
-            total: total.to_string(),
-            locked: self.locked,
-        })
+        self.available.add(&amount)?;
+
+        Ok(())
+    }
+
+    fn apply_withdrawal(
+        &mut self,
+        transactions: &mut Vec<&Transaction>,
+        tx: &Transaction,
+        amount: Money,
+    ) -> Result {
+        if transactions.len() > 1 {
+            Err(AccountTransactionError::InvalidWithdrawal(format!(
+                "Duplicate transaction ID found: {}",
+                tx.id
+            )))?;
+        }
+
+        if self.available.0 < amount.0 {
+            Err(AccountTransactionError::InvalidWithdrawal(format!(
+                "Cannot withdraw {} from client {} when available amount is {}",
+                amount, tx.client_id, self.available
+            )))?
+        }
+
+        self.available.sub(&amount)?;
+
+        Ok(())
+    }
+
+    fn apply_dispute(&mut self, transactions: &mut Vec<&Transaction>, tx: &Transaction) -> Result {
+        let og = self.get_expected_original(
+            transactions,
+            &tx.id,
+            &AccountTransactionError::InvalidDispute,
+        )?;
+
+        match og.tx_type {
+            TransactionType::Deposit { amount } => {
+                let mut available = self.available.clone();
+                let mut held = self.held.clone();
+
+                available.sub(&amount)?;
+                held.add(&amount)?;
+
+                // Only apply if both operations were successful
+                self.available = available;
+                self.held = held;
+            }
+
+            // Not sure if possible to dispute withdrawals.
+            // Assuming that you cannot, based on the term "ChargeBack"
+
+            // TransactionType::Withdrawal { amount } => { .. },
+            _ => Err(AccountTransactionError::InvalidDispute(format!(
+                "Cannot dispute a transaction of type: {:?}",
+                og.tx_type
+            )))?,
+        }
+
+        Ok(())
+    }
+
+    fn apply_resolve(&mut self, transactions: &mut Vec<&Transaction>, tx: &Transaction) -> Result {
+        let prev = self.get_expected_prev(
+            transactions,
+            &tx.id,
+            &AccountTransactionError::InvalidResolve,
+        )?;
+
+        match prev.tx_type {
+            TransactionType::Dispute => {
+                let og = self.get_expected_original(
+                    transactions,
+                    &tx.id,
+                    &AccountTransactionError::InvalidResolve,
+                )?;
+
+                match og.tx_type {
+                    TransactionType::Deposit { amount } => {
+                        let mut available = self.available.clone();
+                        let mut held = self.held.clone();
+
+                        held.sub(&amount)?;
+                        available.add(&amount)?;
+
+                        // Only apply if both operations were successful
+                        self.available = available;
+                        self.held = held;
+                    }
+                    _ => Err(AccountTransactionError::InvalidLedgerState(
+                        "Cannot find deposit to resolve".to_string(),
+                    ))?,
+                }
+            }
+            _ => Err(AccountTransactionError::InvalidResolve(format!(
+                "Cannot resolve a transaction of type: {:?}",
+                prev.tx_type
+            )))?,
+        }
+
+        Ok(())
+    }
+
+    fn apply_charge_back(
+        &mut self,
+        transactions: &mut Vec<&Transaction>,
+        tx: &Transaction,
+    ) -> Result {
+        let prev = self.get_expected_prev(
+            transactions,
+            &tx.id,
+            &AccountTransactionError::InvalidChargeBack,
+        )?;
+
+        match prev.tx_type {
+            TransactionType::Dispute => {
+                let og = self.get_expected_original(
+                    transactions,
+                    &tx.id,
+                    &AccountTransactionError::InvalidChargeBack,
+                )?;
+
+                match og.tx_type {
+                    TransactionType::Deposit { amount } => {
+                        self.held.sub(&amount)?;
+                        self.locked = true;
+                    }
+                    _ => Err(AccountTransactionError::InvalidLedgerState(format!(
+                        "Cannot find deposit to charge back for transaction ID: {}",
+                        tx.id,
+                    )))?,
+                }
+            }
+            _ => Err(AccountTransactionError::InvalidChargeBack(format!(
+                "Cannot resolve a transaction of type: {:?}",
+                prev.tx_type
+            )))?,
+        }
+
+        Ok(())
+    }
+
+    /// Gets the original transaction
+    /// Fails if no previous transactions, different client_ids, or invalid internal state
+    fn get_expected_original<'a>(
+        &self,
+        transactions: &mut Vec<&'a Transaction>,
+        tx_id: &TransactionId,
+        err_gen: &dyn Fn(String) -> AccountTransactionError,
+    ) -> Result<&'a Transaction> {
+        let mut prev = self.get_expected_prev(transactions, tx_id, err_gen)?;
+
+        while prev.tx_type == TransactionType::Resolve {
+            transactions.pop();
+
+            prev = transactions.pop().ok_or_else(|| {
+                AccountTransactionError::InvalidLedgerState(format!(
+                    "No previous transaction found with ID: {}",
+                    tx_id
+                ))
+            })?;
+        }
+
+        return Ok(prev);
+    }
+
+    /// Gets the previous transaction, ensuring the same client_id
+    /// Fails if no previous transaction or different client_ids
+    fn get_expected_prev<'a>(
+        &self,
+        transactions: &mut Vec<&'a Transaction>,
+        tx_id: &TransactionId,
+        err_gen: &dyn Fn(String) -> AccountTransactionError,
+    ) -> Result<&'a Transaction> {
+        let prev = transactions
+            .pop()
+            .ok_or_else(|| err_gen(format!("No previous transaction found with ID: {}", tx_id)))?;
+
+        if prev.client_id != self.client_id {
+            Err(AccountTransactionError::InvalidClientId(
+                prev.id,
+                prev.client_id,
+                self.client_id,
+            ))?;
+        }
+
+        return Ok(prev);
     }
 }
 

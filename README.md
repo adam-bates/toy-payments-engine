@@ -161,7 +161,7 @@ Then we apply new transactions to our snapshot, using our updated ledger.
 
 - Link to apply call: [src/main.rs:63-66](https://github.com/adam-bates/toy-payments-engine/blob/main/src/main.rs#L63-L66)
 
-- Link to apply logic: [src/tpe/snapshots/account_snapshot.rs:85](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/snapshots/account_snapshot.rs#L85)
+- Link to apply logic: [src/tpe/snapshots/account_snapshot.rs:103](https://github.com/adam-bates/toy-payments-engine/blob/main/src/tpe/snapshots/account_snapshot.rs#L103)
 
 ## Part 4: Report 📈
 

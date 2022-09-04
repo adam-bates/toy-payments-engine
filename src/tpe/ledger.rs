@@ -57,35 +57,41 @@ impl Ledger {
         &self,
         ledger_idx: &usize,
         id: &TransactionId,
-    ) -> Option<Vec<&Transaction>> {
-        if let Some(indicies) = self.lookup_map.get(id) {
-            let indicies = indicies.iter().copied().collect::<HashSet<usize>>();
+    ) -> Vec<&Transaction> {
+        let indicies = if let Some(indicies) = self.lookup_map.get(id) {
+            indicies
+        } else {
+            return Vec::new();
+        };
 
-            let transactions = self
-                .history
-                .iter()
-                .enumerate()
-                .filter_map(|(idx, tx)| {
-                    if !tx.invalid && idx <= *ledger_idx && indicies.contains(&idx) {
-                        return Some(tx);
-                    }
+        let indicies = indicies.iter().copied().collect::<HashSet<usize>>();
 
-                    None
-                })
-                .collect();
+        let transactions = self
+            .history
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, tx)| {
+                if !tx.invalid && idx <= *ledger_idx && indicies.contains(&idx) {
+                    return Some(tx);
+                }
 
-            return Some(transactions);
-        }
+                None
+            })
+            .collect();
 
-        None
+        return transactions;
     }
 
-    /// Finds indicies for a client ID between the given inclusive bounds
-    pub fn find_indicies_for_client_id(&self, client_id: ClientId, from_idx: usize) -> Vec<usize> {
+    /// Returns vector of valid ledger indicies for a client, starting from the from_idx
+    pub fn get_valid_indicies_for_client(
+        &self,
+        client_id: ClientId,
+        from_idx: usize,
+    ) -> Vec<usize> {
         let mut indicies = vec![];
 
         for (idx, tx) in self.history[from_idx..].iter().enumerate() {
-            if tx.client_id == client_id {
+            if tx.client_id == client_id && !tx.invalid {
                 indicies.push(from_idx + idx);
             }
         }
@@ -237,7 +243,7 @@ mod tests {
 
         assert!(ledger
             .get_valid_transactions_until(&100, &SOME_TRANSACTION_ID)
-            .is_none());
+            .is_empty());
 
         let transaction1 = build_transaction(
             SOME_TRANSACTION_ID,
@@ -266,28 +272,28 @@ mod tests {
 
         assert_eq!(
             ledger.get_valid_transactions_until(&0, &SOME_TRANSACTION_ID),
-            Some(vec![&transaction1])
+            vec![&transaction1]
         );
         assert_eq!(
             ledger.get_valid_transactions_until(&1, &SOME_TRANSACTION_ID),
-            Some(vec![&transaction1])
+            vec![&transaction1]
         );
         assert_eq!(
             ledger.get_valid_transactions_until(&2, &SOME_TRANSACTION_ID),
-            Some(vec![&transaction1, &transaction3])
+            vec![&transaction1, &transaction3]
         );
         assert_eq!(
             ledger.get_valid_transactions_until(&3, &SOME_TRANSACTION_ID),
-            Some(vec![&transaction1, &transaction3])
+            vec![&transaction1, &transaction3]
         );
     }
 
     #[test]
-    fn find_indicies_for_client_id() {
+    fn get_valid_indicies_for_client() {
         let mut ledger = Ledger::new();
 
         assert!(ledger
-            .find_indicies_for_client_id(SOME_CLIENT_ID, 0)
+            .get_valid_indicies_for_client(SOME_CLIENT_ID, 0)
             .is_empty());
 
         let transaction1 = build_transaction(
@@ -300,7 +306,7 @@ mod tests {
         ledger.append(transaction1);
 
         assert_eq!(
-            ledger.find_indicies_for_client_id(SOME_CLIENT_ID, 0),
+            ledger.get_valid_indicies_for_client(SOME_CLIENT_ID, 0),
             vec![0]
         );
 
@@ -314,7 +320,7 @@ mod tests {
         ledger.append(transaction2);
 
         assert_eq!(
-            ledger.find_indicies_for_client_id(SOME_CLIENT_ID, 0),
+            ledger.get_valid_indicies_for_client(SOME_CLIENT_ID, 0),
             vec![0]
         );
 
@@ -326,7 +332,7 @@ mod tests {
         ledger.append(transaction3);
 
         assert_eq!(
-            ledger.find_indicies_for_client_id(SOME_CLIENT_ID, 0),
+            ledger.get_valid_indicies_for_client(SOME_CLIENT_ID, 0),
             vec![0, 2]
         );
     }
