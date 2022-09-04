@@ -13,13 +13,11 @@ pub struct AccountSnapshots {
 
 impl AccountSnapshots {
     pub fn new() -> Self {
-        return Self::default();
+        Self::default()
     }
 
     pub fn find_mut_or_create(&mut self, client_id: ClientId) -> &mut AccountSnapshot {
-        if !self.map.contains_key(&client_id) {
-            self.map.insert(client_id, AccountSnapshot::new(client_id));
-        }
+        self.map.entry(client_id).or_insert_with(|| AccountSnapshot::new(client_id));
 
         return self.map.get_mut(&client_id).unwrap();
     }

@@ -11,7 +11,7 @@ pub struct Ledger {
 
 impl Ledger {
     pub fn new() -> Self {
-        return Self::default();
+        Self::default()
     }
 
     pub fn append(&mut self, tx: Transaction) -> usize {
@@ -26,7 +26,7 @@ impl Ledger {
             self.lookup_map.insert(id, vec![index]);
         }
 
-        return index;
+        index
     }
 
     pub fn invalidate(&mut self, index: &usize) -> bool {
@@ -38,7 +38,7 @@ impl Ledger {
 
         self.history[index].invalid = true;
 
-        return true;
+        true
     }
 
     pub fn get_by_index(&self, index: &usize) -> Option<&Transaction> {
@@ -48,7 +48,7 @@ impl Ledger {
             return None;
         }
 
-        return Some(&self.history[index]);
+        Some(&self.history[index])
     }
 
     /// Returns vector of valid transactions for a transaction ID, until the given index
@@ -58,7 +58,7 @@ impl Ledger {
         id: &TransactionId,
     ) -> Option<Vec<&Transaction>> {
         if let Some(indicies) = self.lookup_map.get(id) {
-            let indicies = indicies.iter().map(|idx| *idx).collect::<HashSet<usize>>();
+            let indicies = indicies.iter().copied().collect::<HashSet<usize>>();
 
             let transactions = self
                 .history
@@ -69,22 +69,18 @@ impl Ledger {
                         return Some(tx);
                     }
 
-                    return None;
+                    None
                 })
                 .collect();
 
             return Some(transactions);
         }
 
-        return None;
+        None
     }
 
     /// Finds indicies for a client ID between the given inclusive bounds
-    pub fn find_indicies_for_client_id(
-        &self,
-        client_id: ClientId,
-        from_idx: usize,
-    ) -> Vec<usize> {
+    pub fn find_indicies_for_client_id(&self, client_id: ClientId, from_idx: usize) -> Vec<usize> {
         let mut indicies = vec![];
 
         for (idx, tx) in self.history[from_idx..].iter().enumerate() {
@@ -93,11 +89,15 @@ impl Ledger {
             }
         }
 
-        return indicies;
+        indicies
     }
 
     pub fn len(&self) -> usize {
-        return self.history.len();
+        self.history.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -120,12 +120,12 @@ mod tests {
         client_id: ClientId,
         tx_type: TransactionType,
     ) -> Transaction {
-        return Transaction {
+        Transaction {
             id,
             client_id,
             tx_type,
             invalid: false,
-        };
+        }
     }
 
     #[test]
@@ -181,9 +181,9 @@ mod tests {
         assert_eq!(
             ledger.history,
             vec![
-                transaction1.clone(),
-                transaction2.clone(),
-                transaction3.clone()
+                transaction1,
+                transaction2,
+                transaction3
             ]
         );
         assert_eq!(
@@ -258,7 +258,7 @@ mod tests {
                 amount: SOME_AMOUNT,
             },
         );
-        ledger.append(transaction2.clone());
+        ledger.append(transaction2);
 
         let transaction3 = build_transaction(
             SOME_TRANSACTION_ID,
@@ -289,7 +289,9 @@ mod tests {
     fn find_indicies_for_client_id() {
         let mut ledger = Ledger::new();
 
-        assert!(ledger.find_indicies_for_client_id(SOME_CLIENT_ID, 0).is_empty());
+        assert!(ledger
+            .find_indicies_for_client_id(SOME_CLIENT_ID, 0)
+            .is_empty());
 
         let transaction1 = build_transaction(
             SOME_TRANSACTION_ID,
@@ -298,9 +300,12 @@ mod tests {
                 amount: SOME_AMOUNT,
             },
         );
-        ledger.append(transaction1.clone());
+        ledger.append(transaction1);
 
-        assert_eq!(ledger.find_indicies_for_client_id(SOME_CLIENT_ID, 0), vec![0]);
+        assert_eq!(
+            ledger.find_indicies_for_client_id(SOME_CLIENT_ID, 0),
+            vec![0]
+        );
 
         let transaction2 = build_transaction(
             OTHER_TRANSACTION_ID,
@@ -309,17 +314,23 @@ mod tests {
                 amount: SOME_AMOUNT,
             },
         );
-        ledger.append(transaction2.clone());
+        ledger.append(transaction2);
 
-        assert_eq!(ledger.find_indicies_for_client_id(SOME_CLIENT_ID, 0), vec![0]);
+        assert_eq!(
+            ledger.find_indicies_for_client_id(SOME_CLIENT_ID, 0),
+            vec![0]
+        );
 
         let transaction3 = build_transaction(
             SOME_TRANSACTION_ID,
             SOME_CLIENT_ID,
             TransactionType::Dispute,
         );
-        ledger.append(transaction3.clone());
+        ledger.append(transaction3);
 
-        assert_eq!(ledger.find_indicies_for_client_id(SOME_CLIENT_ID, 0), vec![0, 2]);
+        assert_eq!(
+            ledger.find_indicies_for_client_id(SOME_CLIENT_ID, 0),
+            vec![0, 2]
+        );
     }
 }

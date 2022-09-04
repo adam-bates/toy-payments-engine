@@ -83,6 +83,6 @@ impl InputEvent {
             },
         };
 
-        return Ok(tx);
+        Ok(tx)
     }
 }

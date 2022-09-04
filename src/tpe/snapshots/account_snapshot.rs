@@ -48,13 +48,13 @@ pub enum AccountTransactionError {
 
 impl AccountSnapshot {
     pub fn new(client_id: ClientId) -> Self {
-        return Self {
+        Self {
             from_ledger_idx: None,
             client_id,
             available: Money(0),
             held: Money(0),
             locked: false,
-        };
+        }
     }
 
     pub fn apply_transactions(&mut self, ledger: &mut Ledger) -> Result {
@@ -62,7 +62,10 @@ impl AccountSnapshot {
 
         let ledger_idicies = ledger.find_indicies_for_client_id(self.client_id, from_idx);
 
-        log::debug!("find_indicies_for_client_id({}, {from_idx}) = {ledger_idicies:?}", self.client_id);
+        log::debug!(
+            "find_indicies_for_client_id({}, {from_idx}) = {ledger_idicies:?}",
+            self.client_id
+        );
 
         for ledger_idx in ledger_idicies {
             let res = self.apply_transaction(ledger, &ledger_idx);
@@ -168,8 +171,8 @@ impl AccountSnapshot {
 
                 match prev.tx_type {
                     TransactionType::Deposit { amount } => {
-                        let mut available = self.available.clone();
-                        let mut held = self.held.clone();
+                        let mut available = self.available;
+                        let mut held = self.held;
 
                         available.sub(&amount)?;
                         held.add(&amount)?;
@@ -228,8 +231,8 @@ impl AccountSnapshot {
 
                         match prev.tx_type {
                             TransactionType::Deposit { amount } => {
-                                let mut available = self.available.clone();
-                                let mut held = self.held.clone();
+                                let mut available = self.available;
+                                let mut held = self.held;
 
                                 held.sub(&amount)?;
                                 available.add(&amount)?;
@@ -238,9 +241,7 @@ impl AccountSnapshot {
                                 self.available = available;
                                 self.held = held;
                             }
-                            _ => Err(AccountTransactionError::InvalidLedgerState(format!(
-                                "Cannot find deposit to resolve"
-                            )))?,
+                            _ => Err(AccountTransactionError::InvalidLedgerState("Cannot find deposit to resolve".to_string()))?,
                         }
                     }
                     _ => Err(AccountTransactionError::InvalidResolve(format!(
@@ -291,9 +292,7 @@ impl AccountSnapshot {
                                 self.held.sub(&amount)?;
                                 self.locked = true;
                             }
-                            _ => Err(AccountTransactionError::InvalidLedgerState(format!(
-                                "Cannot find deposit to charge back"
-                            )))?,
+                            _ => Err(AccountTransactionError::InvalidLedgerState("Cannot find deposit to charge back".to_string()))?,
                         }
                     }
                     _ => Err(AccountTransactionError::InvalidChargeBack(format!(
@@ -311,13 +310,13 @@ impl AccountSnapshot {
         let mut total = self.available;
         total.add(&self.held)?;
 
-        return Ok(AccountReport {
+        Ok(AccountReport {
             client: self.client_id.to_string(),
             available: self.available.to_string(),
             held: self.held.to_string(),
             total: total.to_string(),
             locked: self.locked,
-        });
+        })
     }
 }
 
@@ -341,12 +340,12 @@ mod tests {
         client_id: ClientId,
         tx_type: TransactionType,
     ) -> Transaction {
-        return Transaction {
+        Transaction {
             id,
             client_id,
             tx_type,
             invalid: false,
-        };
+        }
     }
 
     fn build_ledger(transactions: Vec<Transaction>) -> Ledger {
@@ -356,7 +355,7 @@ mod tests {
             ledger.append(tx);
         }
 
-        return ledger;
+        ledger
     }
 
     #[test]
