@@ -3,6 +3,7 @@ use crate::Transaction;
 
 use std::collections::{HashMap, HashSet};
 
+/// Represents a WORM (Write Once, Read Many) data structure for keeping track of transactions
 #[derive(Debug, Default)]
 pub struct Ledger {
     history: Vec<Transaction>,

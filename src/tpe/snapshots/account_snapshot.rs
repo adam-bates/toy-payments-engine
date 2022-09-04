@@ -5,6 +5,7 @@ use crate::{AccountReport, Ledger, TransactionType};
 
 use thiserror::Error;
 
+/// Represents a snapshot in time for a given account
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountSnapshot {
     from_ledger_idx: Option<usize>,

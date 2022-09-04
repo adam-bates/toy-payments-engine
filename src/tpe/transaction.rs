@@ -1,6 +1,7 @@
 use crate::ids::{ClientId, TransactionId};
 use crate::Money;
 
+/// Transaction represents a requested change to an account
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
     pub id: TransactionId,

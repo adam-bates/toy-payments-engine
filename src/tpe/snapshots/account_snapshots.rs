@@ -6,6 +6,7 @@ use crate::Result;
 
 use std::collections::HashMap;
 
+/// Convenience structure for mapping client IDs to Account snapshots
 #[derive(Debug, Default)]
 pub struct AccountSnapshots {
     map: HashMap<ClientId, AccountSnapshot>,
