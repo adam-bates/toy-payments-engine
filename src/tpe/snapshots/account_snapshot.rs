@@ -218,35 +218,34 @@ impl AccountSnapshot {
             &AccountTransactionError::InvalidResolve,
         )?;
 
-        match prev.tx_type {
-            TransactionType::Dispute => {
-                let og = self.get_expected_original(
-                    transactions,
-                    &tx.id,
-                    &AccountTransactionError::InvalidResolve,
-                )?;
+        let og = match prev.tx_type {
+            TransactionType::Dispute => self.get_expected_original(
+                transactions,
+                &tx.id,
+                &AccountTransactionError::InvalidResolve,
+            )?,
 
-                match og.tx_type {
-                    TransactionType::Deposit { amount } => {
-                        let mut available = self.available.clone();
-                        let mut held = self.held.clone();
-
-                        held.sub(&amount)?;
-                        available.add(&amount)?;
-
-                        // Only apply if both operations were successful
-                        self.available = available;
-                        self.held = held;
-                    }
-                    _ => Err(AccountTransactionError::InvalidLedgerState(
-                        "Cannot find deposit to resolve".to_string(),
-                    ))?,
-                }
-            }
             _ => Err(AccountTransactionError::InvalidResolve(format!(
                 "Cannot resolve a transaction of type: {:?}",
                 prev.tx_type
             )))?,
+        };
+
+        match og.tx_type {
+            TransactionType::Deposit { amount } => {
+                let mut available = self.available.clone();
+                let mut held = self.held.clone();
+
+                held.sub(&amount)?;
+                available.add(&amount)?;
+
+                // Only apply if both operations were successful
+                self.available = available;
+                self.held = held;
+            }
+            _ => Err(AccountTransactionError::InvalidLedgerState(
+                "Cannot find deposit to resolve".to_string(),
+            ))?,
         }
 
         Ok(())
@@ -263,28 +262,27 @@ impl AccountSnapshot {
             &AccountTransactionError::InvalidChargeBack,
         )?;
 
-        match prev.tx_type {
-            TransactionType::Dispute => {
-                let og = self.get_expected_original(
-                    transactions,
-                    &tx.id,
-                    &AccountTransactionError::InvalidChargeBack,
-                )?;
+        let og = match prev.tx_type {
+            TransactionType::Dispute => self.get_expected_original(
+                transactions,
+                &tx.id,
+                &AccountTransactionError::InvalidChargeBack,
+            )?,
 
-                match og.tx_type {
-                    TransactionType::Deposit { amount } => {
-                        self.held.sub(&amount)?;
-                        self.locked = true;
-                    }
-                    _ => Err(AccountTransactionError::InvalidLedgerState(format!(
-                        "Cannot find deposit to charge back for transaction ID: {}",
-                        tx.id,
-                    )))?,
-                }
-            }
             _ => Err(AccountTransactionError::InvalidChargeBack(format!(
                 "Cannot resolve a transaction of type: {:?}",
                 prev.tx_type
+            )))?,
+        };
+
+        match og.tx_type {
+            TransactionType::Deposit { amount } => {
+                self.held.sub(&amount)?;
+                self.locked = true;
+            }
+            _ => Err(AccountTransactionError::InvalidLedgerState(format!(
+                "Cannot find deposit to charge back for transaction ID: {}",
+                tx.id,
             )))?,
         }
 
