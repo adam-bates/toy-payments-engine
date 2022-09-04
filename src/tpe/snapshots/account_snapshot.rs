@@ -116,12 +116,8 @@ impl AccountSnapshot {
 
         let mut transactions = ledger.get_valid_transactions_until(ledger_idx, &tx.id);
 
-        let tx = transactions.pop().ok_or_else(|| {
-            AccountTransactionError::TransactionNotFound(format!(
-                "No transactions found in ledger for transaction ID: {}",
-                tx.id
-            ))
-        })?;
+        // already referencing latest transaction as `tx`
+        transactions.pop();
 
         match tx.tx_type {
             TransactionType::Deposit { amount } => {
