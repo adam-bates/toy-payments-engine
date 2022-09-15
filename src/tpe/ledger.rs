@@ -1,7 +1,7 @@
 use crate::ids::{ClientId, TransactionId};
 use crate::Transaction;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// Represents a WORM (Write Once, Read Many) data structure for keeping track of transactions
 #[derive(Debug, Default)]
@@ -78,7 +78,7 @@ impl Ledger {
             }
         }
 
-        return transactions;
+        transactions
     }
 
     /// Returns vector of valid ledger indicies for a client, starting from the from_idx

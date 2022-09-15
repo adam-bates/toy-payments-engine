@@ -187,8 +187,8 @@ impl AccountSnapshot {
 
         match og.tx_type {
             TransactionType::Deposit { amount } => {
-                let mut available = self.available.clone();
-                let mut held = self.held.clone();
+                let mut available = self.available;
+                let mut held = self.held;
 
                 available.sub(&amount)?;
                 held.add(&amount)?;
@@ -233,8 +233,8 @@ impl AccountSnapshot {
 
         match og.tx_type {
             TransactionType::Deposit { amount } => {
-                let mut available = self.available.clone();
-                let mut held = self.held.clone();
+                let mut available = self.available;
+                let mut held = self.held;
 
                 held.sub(&amount)?;
                 available.add(&amount)?;
@@ -311,7 +311,7 @@ impl AccountSnapshot {
             })?;
         }
 
-        return Ok(prev);
+        Ok(prev)
     }
 
     /// Gets the previous transaction, ensuring the same client_id
@@ -334,7 +334,7 @@ impl AccountSnapshot {
             ))?;
         }
 
-        return Ok(prev);
+        Ok(prev)
     }
 }
 
