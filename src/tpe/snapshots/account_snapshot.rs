@@ -141,7 +141,7 @@ impl AccountSnapshot {
         tx: &Transaction,
         amount: Money,
     ) -> Result {
-        if transactions.len() > 1 {
+        if !transactions.is_empty() {
             Err(AccountTransactionError::InvalidDeposit(format!(
                 "Duplicate transaction ID found: {}",
                 tx.id
@@ -159,7 +159,7 @@ impl AccountSnapshot {
         tx: &Transaction,
         amount: Money,
     ) -> Result {
-        if transactions.len() > 1 {
+        if !transactions.is_empty() {
             Err(AccountTransactionError::InvalidWithdrawal(format!(
                 "Duplicate transaction ID found: {}",
                 tx.id
@@ -618,6 +618,101 @@ mod tests {
             AccountSnapshot {
                 client_id: SOME_CLIENT_ID,
                 from_ledger_idx: Some(1),
+                available: SOME_AMOUNT,
+                held: Money(0),
+                locked: false,
+            }
+        );
+    }
+
+    #[test]
+    fn fail_to_apply_duplicate_deposit() {
+        let mut snapshot1 = AccountSnapshot::new(SOME_CLIENT_ID);
+
+        let transaction1 = build_transaction(
+            SOME_TRANSACTION_ID,
+            SOME_CLIENT_ID,
+            TransactionType::Deposit {
+                amount: SOME_AMOUNT,
+            },
+        );
+
+        let transaction2 = build_transaction(
+            SOME_TRANSACTION_ID,
+            SOME_CLIENT_ID,
+            TransactionType::Deposit {
+                amount: OTHER_AMOUNT,
+            },
+        );
+
+        let mut ledger = build_ledger(vec![transaction1]);
+
+        let res = snapshot1.apply_transactions(&mut ledger);
+        assert!(res.is_ok());
+
+        ledger.append(transaction2);
+
+        let res = snapshot1.apply_transactions(&mut ledger);
+        assert!(res.is_err());
+
+        assert_eq!(
+            snapshot1,
+            AccountSnapshot {
+                client_id: SOME_CLIENT_ID,
+                from_ledger_idx: Some(1),
+                available: SOME_AMOUNT,
+                held: Money(0),
+                locked: false,
+            }
+        );
+    }
+
+    #[test]
+    fn fail_to_apply_duplicate_withdrawal() {
+        let mut snapshot1 = AccountSnapshot::new(SOME_CLIENT_ID);
+
+        let mut deposit_amount = SOME_AMOUNT;
+        deposit_amount.add(&SOME_AMOUNT).unwrap();
+
+        let transaction1 = build_transaction(
+            SOME_TRANSACTION_ID,
+            SOME_CLIENT_ID,
+            TransactionType::Deposit {
+                amount: deposit_amount,
+            },
+        );
+
+        let transaction2 = build_transaction(
+            OTHER_TRANSACTION_ID,
+            SOME_CLIENT_ID,
+            TransactionType::Withdrawal {
+                amount: SOME_AMOUNT,
+            },
+        );
+
+        let transaction3 = build_transaction(
+            OTHER_TRANSACTION_ID,
+            SOME_CLIENT_ID,
+            TransactionType::Withdrawal {
+                amount: SOME_AMOUNT,
+            },
+        );
+
+        let mut ledger = build_ledger(vec![transaction1, transaction2]);
+
+        let res = snapshot1.apply_transactions(&mut ledger);
+        assert!(res.is_ok());
+
+        ledger.append(transaction3);
+
+        let res = snapshot1.apply_transactions(&mut ledger);
+        assert!(res.is_err());
+
+        assert_eq!(
+            snapshot1,
+            AccountSnapshot {
+                client_id: SOME_CLIENT_ID,
+                from_ledger_idx: Some(2),
                 available: SOME_AMOUNT,
                 held: Money(0),
                 locked: false,
