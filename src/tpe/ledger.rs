@@ -64,20 +64,19 @@ impl Ledger {
             return Vec::new();
         };
 
-        let indicies = indicies.iter().copied().collect::<HashSet<usize>>();
+        let mut transactions = vec![];
 
-        let transactions = self
-            .history
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, tx)| {
-                if !tx.invalid && idx <= *ledger_idx && indicies.contains(&idx) {
-                    return Some(tx);
+        for &index in indicies.iter() {
+            if let Some(tx) = self.history.get(index) {
+                if !tx.invalid {
+                    transactions.push(tx);
                 }
+            }
 
-                None
-            })
-            .collect();
+            if index >= *ledger_idx {
+                break;
+            }
+        }
 
         return transactions;
     }
@@ -255,13 +254,13 @@ mod tests {
         ledger.append(transaction1.clone());
 
         let transaction2 = build_transaction(
-            OTHER_TRANSACTION_ID,
+            SOME_TRANSACTION_ID,
             SOME_CLIENT_ID,
             TransactionType::Deposit {
                 amount: SOME_AMOUNT,
             },
         );
-        ledger.append(transaction2);
+        ledger.append(transaction2.clone());
 
         let transaction3 = build_transaction(
             SOME_TRANSACTION_ID,
@@ -269,6 +268,25 @@ mod tests {
             TransactionType::Dispute,
         );
         ledger.append(transaction3.clone());
+
+        assert_eq!(
+            ledger.get_valid_transactions_until(&0, &SOME_TRANSACTION_ID),
+            vec![&transaction1]
+        );
+        assert_eq!(
+            ledger.get_valid_transactions_until(&1, &SOME_TRANSACTION_ID),
+            vec![&transaction1, &transaction2]
+        );
+        assert_eq!(
+            ledger.get_valid_transactions_until(&2, &SOME_TRANSACTION_ID),
+            vec![&transaction1, &transaction2, &transaction3]
+        );
+        assert_eq!(
+            ledger.get_valid_transactions_until(&3, &SOME_TRANSACTION_ID),
+            vec![&transaction1, &transaction2, &transaction3]
+        );
+
+        ledger.history.get_mut(1).unwrap().invalid = true;
 
         assert_eq!(
             ledger.get_valid_transactions_until(&0, &SOME_TRANSACTION_ID),
